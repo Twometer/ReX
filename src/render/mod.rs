@@ -1,7 +1,7 @@
 use crate::dimensions::*;
-use crate::error::{Error, LayoutError};
+use crate::error::Error;
 pub use crate::font::MathFont;
-use crate::layout::{Alignment, Grid, Layout, LayoutNode, LayoutSettings, LayoutVariant, Style};
+use crate::layout::{Alignment, Grid, Layout, LayoutNode, LayoutSettings, LayoutVariant};
 pub use crate::parser::color::RGBA;
 
 pub struct Renderer {
@@ -252,5 +252,8 @@ impl Renderer {
     }
 }
 
+#[cfg(feature = "export")]
 pub mod scene;
+
+#[cfg(feature = "export")]
 pub use scene::SceneWrapper;

@@ -20,3 +20,8 @@ test.svg
 *.html
 callgrind*
 *.rustfmt
+
+# Example data
+fonts/
+*.svg
+*.pdf

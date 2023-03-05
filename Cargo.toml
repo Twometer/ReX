@@ -3,17 +3,19 @@ name = "rex"
 version = "0.1.2"
 authors = [
     "Christopher Breeden <github@u.breeden.cc>",
-    "Sebastian Köln <s3bk@protonmail.com>"
+    "Sebastian Köln <s3bk@protonmail.com>",
+    "Twometer <twometer@outlook.de>"
 ]
 edition = "2021"
 
 [dependencies]
-font = { git = "https://github.com/pdf-rs/font", features=["woff"] }
-pathfinder_geometry = { git = "https://github.com/servo/pathfinder/" }
-pathfinder_color = { git = "https://github.com/servo/pathfinder/" }
-pathfinder_content = { git = "https://github.com/servo/pathfinder/" }
-pathfinder_renderer = { git = "https://github.com/servo/pathfinder/" }
-pathfinder_export = { git = "https://github.com/servo/pathfinder/" }
+pathfinder_geometry = { git = "https://github.com/servo/pathfinder/", optional = true }
+pathfinder_content = { git = "https://github.com/servo/pathfinder/", optional = true }
+pathfinder_color = { git = "https://github.com/servo/pathfinder/", optional = true }
+pathfinder_export = { git = "https://github.com/servo/pathfinder/", optional = true }
+pathfinder_renderer = { git = "https://github.com/servo/pathfinder/", optional = true }
+
+font = { git = "https://github.com/pdf-rs/font", features = ["woff"] }
 unicode-math = { git = "https://github.com/s3bk/unicode-math/" }
 
 serde_derive = "1.0"
@@ -24,3 +26,10 @@ log = "0.4.8"
 serde_yaml = "0.7"
 bincode = "1.2.1"
 env_logger = "*"
+
+[[example]]
+name = "qc"
+required-features = ["export"]
+
+[features]
+export = ["dep:pathfinder_export", "dep:pathfinder_renderer", "dep:pathfinder_color", "dep:pathfinder_geometry", "dep:pathfinder_content"]
