@@ -21,13 +21,15 @@ mod convert;
 pub mod engine;
 pub mod spacing;
 
-use crate::parser::color::RGBA;
+use serde_derive::{Deserialize, Serialize};
+
+use crate::dimensions::*;
 use crate::font::{FontContext, MathFont};
-use std::ops::Deref;
-use std::fmt;
+use crate::parser::color::RGBA;
 use std::cmp::{max, min};
 use std::collections::BTreeMap;
-use crate::dimensions::*;
+use std::fmt;
+use std::ops::Deref;
 
 // By default this will act as a horizontal box
 #[derive(Clone, Debug, Default)]
@@ -47,10 +49,10 @@ impl<'f> Layout<'f> {
             height: self.height,
             depth: self.depth,
             node: LayoutVariant::HorizontalBox(HorizontalBox {
-                                                   contents: self.contents,
-                                                   offset: self.offset,
-                                                   alignment: self.alignment,
-                                               }),
+                contents: self.contents,
+                offset: self.offset,
+                alignment: self.alignment,
+            }),
         }
     }
 
@@ -144,7 +146,7 @@ pub struct LayoutGlyph<'f> {
     pub offset: Length<Px>,
     pub attachment: Length<Px>,
     pub italics: Length<Px>,
-    pub font: &'f MathFont
+    pub font: &'f MathFont,
 }
 
 #[allow(dead_code)]
@@ -182,10 +184,11 @@ impl<'f> fmt::Debug for VerticalBox<'f> {
         if self.offset.is_zero() {
             write!(f, "VerticalBox({:?})", self.contents)
         } else {
-            write!(f,
-                   "VerticalBox({:?}, offset: {})",
-                   self.contents,
-                   self.offset)
+            write!(
+                f,
+                "VerticalBox({:?}, offset: {})",
+                self.contents, self.offset
+            )
         }
     }
 }
@@ -205,7 +208,7 @@ impl<'f> fmt::Debug for LayoutGlyph<'f> {
 impl<'f> fmt::Debug for LayoutNode<'f> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.node {
-            LayoutVariant::Grid(ref grid) =>  write!(f, "Grid(..)"),
+            LayoutVariant::Grid(ref grid) => write!(f, "Grid(..)"),
             LayoutVariant::HorizontalBox(ref hb) => write!(f, "HBox({:?})", hb.contents),
             LayoutVariant::VerticalBox(ref vb) => write!(f, "VBox({:?})", vb.contents),
             LayoutVariant::Glyph(ref gly) => write!(f, "Glyph({:?})", gly),
@@ -268,8 +271,7 @@ pub fn is_symbol<'a, 'b: 'a>(contents: &'a [LayoutNode<'b>]) -> Option<LayoutGly
 /// Display styles which are used in scaling glyphs.  The associated
 /// methods are taken from pg.441 from the TeXBook
 #[allow(dead_code)]
-#[derive(Serialize, Deserialize)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Style {
     ScriptScriptCramped,
     ScriptScript,
@@ -291,8 +293,7 @@ impl Default for Style {
 impl Style {
     fn cramped(self) -> Style {
         match self {
-            Style::ScriptScriptCramped |
-            Style::ScriptScript => Style::ScriptScriptCramped,
+            Style::ScriptScriptCramped | Style::ScriptScript => Style::ScriptScriptCramped,
             Style::ScriptCramped | Style::Script => Style::ScriptCramped,
             Style::TextCramped | Style::Text => Style::TextCramped,
             Style::DisplayCramped | Style::Display => Style::DisplayCramped,
@@ -304,8 +305,7 @@ impl Style {
             Style::Display | Style::Text => Style::Script,
             Style::DisplayCramped | Style::TextCramped => Style::ScriptCramped,
             Style::Script | Style::ScriptScript => Style::ScriptScript,
-            Style::ScriptCramped |
-            Style::ScriptScriptCramped => Style::ScriptScriptCramped,
+            Style::ScriptCramped | Style::ScriptScriptCramped => Style::ScriptScriptCramped,
         }
     }
 
@@ -314,10 +314,10 @@ impl Style {
             Style::Display | Style::Text | Style::DisplayCramped | Style::TextCramped => {
                 Style::ScriptCramped
             }
-            Style::Script |
-            Style::ScriptScript |
-            Style::ScriptCramped |
-            Style::ScriptScriptCramped => Style::ScriptScriptCramped,
+            Style::Script
+            | Style::ScriptScript
+            | Style::ScriptCramped
+            | Style::ScriptScriptCramped => Style::ScriptScriptCramped,
         }
     }
 
@@ -326,7 +326,7 @@ impl Style {
             Style::Display | Style::Text | Style::Script | Style::ScriptScript => {
                 config.ctx.constants.superscript_shift_up
             }
-            _ => config.ctx.constants.superscript_shift_up_cramped
+            _ => config.ctx.constants.superscript_shift_up_cramped,
         }
     }
 
@@ -352,7 +352,6 @@ impl Style {
         }
     }
 }
-
 
 #[derive(Copy, Clone)]
 pub struct LayoutSettings<'a, 'f> {

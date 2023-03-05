@@ -5,7 +5,7 @@ authors = [
     "Christopher Breeden <github@u.breeden.cc>",
     "Sebastian Köln <s3bk@protonmail.com>"
 ]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 font = { git = "https://github.com/pdf-rs/font", features=["woff"] }
@@ -18,11 +18,9 @@ unicode-math = { git = "https://github.com/s3bk/unicode-math/" }
 
 serde_derive = "1.0"
 serde = "1.0"
+log = "0.4.8"
 
 [dev-dependencies]
 serde_yaml = "0.7"
 bincode = "1.2.1"
 env_logger = "*"
-
-[dependencies.log]
-version="0.4.8"

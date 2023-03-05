@@ -1,10 +1,10 @@
-use crate::dimensions::{Unit};
-use crate::layout::Style;
-use crate::error::{ParseResult, ParseError};
 use super::color::RGBA;
-use crate::environments::Array;
-use crate::font::{AtomType};
 use super::symbols::Symbol;
+use crate::dimensions::Unit;
+use crate::environments::Array;
+use crate::error::{ParseError, ParseResult};
+use crate::font::AtomType;
+use crate::layout::Style;
 
 // TODO: It might be worth letting the `Group` variant
 //   to have an atomtype associated with it.  By default,
@@ -106,8 +106,10 @@ pub enum MathStyle {
 impl ParseNode {
     pub fn expect_left(self) -> ParseResult<'static, Symbol> {
         if let ParseNode::Symbol(sym) = self {
-            if sym.atom_type == AtomType::Open || sym.atom_type == AtomType::Fence ||
-               sym.codepoint == '.' {
+            if sym.atom_type == AtomType::Open
+                || sym.atom_type == AtomType::Fence
+                || sym.codepoint == '.'
+            {
                 return Ok(sym);
             } else {
                 return Err(ParseError::ExpectedOpen(sym));
@@ -119,8 +121,10 @@ impl ParseNode {
 
     pub fn expect_right(self) -> ParseResult<'static, Symbol> {
         if let ParseNode::Symbol(sym) = self {
-            if sym.atom_type == AtomType::Close || sym.atom_type == AtomType::Fence ||
-               sym.codepoint == '.' {
+            if sym.atom_type == AtomType::Close
+                || sym.atom_type == AtomType::Fence
+                || sym.codepoint == '.'
+            {
                 return Ok(sym);
             } else {
                 return Err(ParseError::ExpectedClose(sym));
@@ -139,7 +143,9 @@ impl ParseNode {
                 }
             }
             ParseNode::AtomChange(ref mut node) => node.at = at,
-            ParseNode::Stack(Stack { ref mut atom_type, .. }) => *atom_type = at,
+            ParseNode::Stack(Stack {
+                ref mut atom_type, ..
+            }) => *atom_type = at,
             _ => (),
         }
     }
@@ -147,8 +153,9 @@ impl ParseNode {
     pub fn is_symbol(&self) -> Option<Symbol> {
         match *self {
             ParseNode::Symbol(sym) => Some(sym),
-            ParseNode::Scripts(Scripts { ref base, .. }) =>
-                base.as_ref().and_then(|b| b.is_symbol()),
+            ParseNode::Scripts(Scripts { ref base, .. }) => {
+                base.as_ref().and_then(|b| b.is_symbol())
+            }
             ParseNode::Accent(ref acc) => is_symbol(&acc.nucleus),
             ParseNode::AtomChange(ref ac) => is_symbol(&ac.inner),
             ParseNode::Color(ref clr) => is_symbol(&clr.inner),
@@ -158,30 +165,36 @@ impl ParseNode {
 
     pub fn atom_type(&self) -> AtomType {
         match *self {
-            ParseNode::Symbol(ref sym)  => sym.atom_type,
-            ParseNode::Delimited(_)     => AtomType::Inner,
-            ParseNode::Radical(_)       => AtomType::Alpha,
-            ParseNode::GenFraction(_)   => AtomType::Inner,
-            ParseNode::Group(_)         => AtomType::Alpha,
-            ParseNode::Scripts(ref scr) => scr.base.as_ref()
+            ParseNode::Symbol(ref sym) => sym.atom_type,
+            ParseNode::Delimited(_) => AtomType::Inner,
+            ParseNode::Radical(_) => AtomType::Alpha,
+            ParseNode::GenFraction(_) => AtomType::Inner,
+            ParseNode::Group(_) => AtomType::Alpha,
+            ParseNode::Scripts(ref scr) => scr
+                .base
+                .as_ref()
                 .map(|base| base.atom_type())
                 .unwrap_or(AtomType::Alpha),
 
-            ParseNode::Rule(_)          => AtomType::Alpha,
-            ParseNode::Kerning(_)       => AtomType::Transparent,
-            ParseNode::Accent(ref acc)  => acc.nucleus.first()
+            ParseNode::Rule(_) => AtomType::Alpha,
+            ParseNode::Kerning(_) => AtomType::Transparent,
+            ParseNode::Accent(ref acc) => acc
+                .nucleus
+                .first()
                 .map(|acc| acc.atom_type())
                 .unwrap_or(AtomType::Alpha),
 
-            ParseNode::Style(_)         => AtomType::Transparent,
+            ParseNode::Style(_) => AtomType::Transparent,
             ParseNode::AtomChange(ref ac) => ac.at,
-            ParseNode::Color(ref clr)     => clr.inner.first()
+            ParseNode::Color(ref clr) => clr
+                .inner
+                .first()
                 .map(|first| first.atom_type())
                 .unwrap_or(AtomType::Alpha),
 
-            ParseNode::Extend(_,_)   => AtomType::Inner,
-            ParseNode::Array(_)      => AtomType::Inner,
-            ParseNode::Stack(ref s)  => s.atom_type,
+            ParseNode::Extend(_, _) => AtomType::Inner,
+            ParseNode::Array(_) => AtomType::Inner,
+            ParseNode::Stack(ref s) => s.atom_type,
         }
     }
 }

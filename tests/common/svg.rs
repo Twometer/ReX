@@ -1,13 +1,11 @@
 #![allow(dead_code)]
 extern crate rex;
 
+use super::debug_render::Equation;
 use std::io::Write;
 use std::path::Path;
-use super::debug_render::Equation;
 
-
-const HEADER: &'static str =
-r##"<!DOCTYPE html>
+const HEADER: &'static str = r##"<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -22,19 +20,23 @@ const END: &'static str = r"</body></html>";
 
 fn write_equation<W: Write>(f: &mut W, eq: &Equation) {
     writeln!(f, "<h2>{}</h2>", eq.description).unwrap();
-    writeln!(f,
-             r#"<pre><code class="language-latex">{}</code></pre>"#,
-             eq.tex)
-            .unwrap();
+    writeln!(
+        f,
+        r#"<pre><code class="language-latex">{}</code></pre>"#,
+        eq.tex
+    )
+    .unwrap();
 
     let settings = rex::RenderSettings::default()
         .font_src("rex-xits.otf")
         .font_size(48);
 
-    writeln!(f,
-             "{}",
-             rex::render::svg::render_to_string(&settings, &eq.tex).unwrap())
-            .unwrap();
+    writeln!(
+        f,
+        "{}",
+        rex::render::svg::render_to_string(&settings, &eq.tex).unwrap()
+    )
+    .unwrap();
 }
 
 pub fn write<P: AsRef<Path>>(path: P, eqs: &[Equation]) {

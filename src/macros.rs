@@ -27,23 +27,26 @@ macro_rules! alt {
 // ----------------------
 
 macro_rules! should_fail {
-    ($errs:ident, $func:ident, $iter:expr) => ({
+    ($errs:ident, $func:ident, $iter:expr) => {{
         for item in $iter.iter() {
             if let Ok(_) = $func(item) {
                 $errs.push(format!("{:?} - should have errored.\n", item));
             }
         }
-    })
+    }};
 }
 
 macro_rules! should_pass {
-    ($errs:ident, $func:ident, $iter:expr) => ({
+    ($errs:ident, $func:ident, $iter:expr) => {{
         for item in $iter.iter() {
             if let Err(s) = $func(item) {
-                $errs.push(format!("{:?} - should have passed.\n\tError: {:?}\n", item, s));
+                $errs.push(format!(
+                    "{:?} - should have passed.\n\tError: {:?}\n",
+                    item, s
+                ));
             }
         }
-    })
+    }};
 }
 
 macro_rules! should_equate {
@@ -73,14 +76,14 @@ macro_rules! should_differ {
 }
 
 macro_rules! display_errors {
-    ($errs:ident) => (
+    ($errs:ident) => {
         if $errs.len() > 0 {
             for err in $errs {
                 println!("\n{}", err);
             }
             panic!();
         }
-    )
+    };
 }
 
 // These max/min macros were borrowed

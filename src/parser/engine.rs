@@ -1,16 +1,20 @@
+use crate::dimensions::*;
+use crate::environments::Environment;
 use crate::error::{ParseError, ParseResult};
-use crate::font::{Style, style_symbol, AtomType};
+use crate::font::{style_symbol, AtomType, Style};
+use crate::functions::get_command;
 use crate::lexer::{Lexer, Token};
 use crate::parser::{
-    nodes::{Delimited, ParseNode, Accent, Scripts},
+    color::RGBA,
+    nodes::{Accent, Delimited, ParseNode, Scripts},
     symbols::Symbol,
-    color::RGBA
 };
-use crate::functions::get_command;
-use crate::environments::Environment;
-use crate::dimensions::*;
 
-pub fn expression_until_opt<'a>(lex: &mut Lexer<'a>, local: Style, end: Option<Token>) -> ParseResult<'a, Vec<ParseNode>> {
+pub fn expression_until_opt<'a>(
+    lex: &mut Lexer<'a>,
+    local: Style,
+    end: Option<Token>,
+) -> ParseResult<'a, Vec<ParseNode>> {
     let mut ml: Vec<ParseNode> = Vec::new();
     loop {
         // TODO: Handle INFIX operators here, once we support them.
@@ -19,10 +23,12 @@ pub fn expression_until_opt<'a>(lex: &mut Lexer<'a>, local: Style, end: Option<T
             break;
         }
 
-        let node = alt!(command(lex, local),
-                        group(lex, local),
-                        symbol(lex, local),
-                        implicit_group(lex, local));
+        let node = alt!(
+            command(lex, local),
+            group(lex, local),
+            symbol(lex, local),
+            implicit_group(lex, local)
+        );
 
         // Handle commands that may change the state of the parser
         // ie: fontstyle changes.
@@ -48,18 +54,20 @@ pub fn expression_until_opt<'a>(lex: &mut Lexer<'a>, local: Style, end: Option<T
         // TODO: We should allow for more dialects.
         match node {
             Some(n) => ml.push(n),
-            None => {
-                match lex.current {
-                    Token::Symbol(c) => return Err(ParseError::UnrecognizedSymbol(c)),
-                    _ => unreachable!(),
-                }
-            }
+            None => match lex.current {
+                Token::Symbol(c) => return Err(ParseError::UnrecognizedSymbol(c)),
+                _ => unreachable!(),
+            },
         }
     }
     Ok(ml)
 }
 
-pub fn expression_until<'a>(lex: &mut Lexer<'a>, local: Style, end: Token) -> ParseResult<'a, Vec<ParseNode>> {
+pub fn expression_until<'a>(
+    lex: &mut Lexer<'a>,
+    local: Style,
+    end: Token,
+) -> ParseResult<'a, Vec<ParseNode>> {
     expression_until_opt(lex, local, Some(end))
 }
 
@@ -74,7 +82,11 @@ pub fn expression<'a>(lex: &mut Lexer<'a>, local: Style) -> ParseResult<'a, Vec<
 /// node to process.  Post-fix processing only occurs while processing expressions
 /// (for example, inside a group). In particular, `\hat 2^2` will parse as
 /// `\hat{2}^2` and not `\hat{2^2}`.
-fn postfix<'a>(lex: &mut Lexer<'a>, local: Style, mut prev: Option<ParseNode>) -> ParseResult<'a, Option<ParseNode>> {
+fn postfix<'a>(
+    lex: &mut Lexer<'a>,
+    local: Style,
+    mut prev: Option<ParseNode>,
+) -> ParseResult<'a, Option<ParseNode>> {
     let mut superscript = None;
     let mut subscript = None;
     loop {
@@ -120,10 +132,10 @@ fn postfix<'a>(lex: &mut Lexer<'a>, local: Style, mut prev: Option<ParseNode>) -
 
     if superscript.is_some() || subscript.is_some() {
         Ok(Some(ParseNode::Scripts(Scripts {
-                                       base: prev.map(|b| Box::new(b)),
-                                       superscript: superscript,
-                                       subscript: subscript,
-                                   })))
+            base: prev.map(|b| Box::new(b)),
+            superscript: superscript,
+            subscript: subscript,
+        })))
     } else {
         Ok(prev)
     }
@@ -131,7 +143,10 @@ fn postfix<'a>(lex: &mut Lexer<'a>, local: Style, mut prev: Option<ParseNode>) -
 
 /// Theses commands may change the state of the parser.  This includes
 /// font style and weight changes.
-pub fn state_change<'a>(lex: &mut Lexer<'a>, style: Style) -> ParseResult<'a, Option<Vec<ParseNode>>> {
+pub fn state_change<'a>(
+    lex: &mut Lexer<'a>,
+    style: Style,
+) -> ParseResult<'a, Option<Vec<ParseNode>>> {
     use crate::font::Family;
     if let Token::Command(cmd) = lex.current {
         let new_style = match cmd {
@@ -245,23 +260,22 @@ pub fn symbol<'a>(lex: &mut Lexer<'a>, local: Style) -> ParseResult<'a, Option<P
                         let nucleus = required_argument(lex, local)?;
                         Ok(Some(accent!(sym, nucleus)))
                     }
-                    _ => {
-                        Ok(Some(symbol!(style_symbol(sym.codepoint, local), sym.atom_type)))
-                    }
+                    _ => Ok(Some(symbol!(
+                        style_symbol(sym.codepoint, local),
+                        sym.atom_type
+                    ))),
                 }
             } else {
                 Ok(None)
             }
         }
-        Token::Symbol(c) => {
-            match codepoint_atom_type(c) {
-                None => Ok(None),
-                Some(sym) => {
-                    lex.next();
-                    Ok(Some(symbol!(style_symbol(c, local), sym)))
-                }
+        Token::Symbol(c) => match codepoint_atom_type(c) {
+            None => Ok(None),
+            Some(sym) => {
+                lex.next();
+                Ok(Some(symbol!(style_symbol(c, local), sym)))
             }
-        }
+        },
         _ => Ok(None),
     }
 }
@@ -290,8 +304,13 @@ pub fn required_argument<'a>(lex: &mut Lexer<'a>, local: Style) -> ParseResult<'
 /// This method is similar to `required_argument`, but instead uses a custom parser.
 /// For instance, `\color{#012345}{<expression>}` uses a custom parser to parse
 /// the color token `#012345`.
-pub fn required_argument_with<'a, F, O>(lex: &mut Lexer<'a>, local: Style, f: F) -> ParseResult<'a, O>
-    where F: FnOnce(&mut Lexer<'a>, Style) -> ParseResult<'a, O>
+pub fn required_argument_with<'a, F, O>(
+    lex: &mut Lexer<'a>,
+    local: Style,
+    f: F,
+) -> ParseResult<'a, O>
+where
+    F: FnOnce(&mut Lexer<'a>, Style) -> ParseResult<'a, O>,
 {
     lex.consume_whitespace();
     if lex.current == Token::Symbol('{') {
@@ -308,7 +327,8 @@ pub fn required_argument_with<'a, F, O>(lex: &mut Lexer<'a>, local: Style, f: F)
 }
 
 pub fn required_group_with<'a, F, O>(lex: &mut Lexer<'a>, local: Style, f: F) -> ParseResult<'a, O>
-    where F: FnOnce(&mut Lexer<'a>, Style) -> ParseResult<'a, O>
+where
+    F: FnOnce(&mut Lexer<'a>, Style) -> ParseResult<'a, O>,
 {
     lex.consume_whitespace();
     if lex.current == Token::Symbol('{') {
@@ -324,8 +344,13 @@ pub fn required_group_with<'a, F, O>(lex: &mut Lexer<'a>, local: Style, f: F) ->
     }
 }
 
-pub fn optional_argument_with<'a, F, O>(lex: &mut Lexer<'a>, local: Style, f: F) -> ParseResult<'a, Option<O>>
-    where F: for<'l> FnOnce(&'l mut Lexer<'a>, Style) -> ParseResult<'a, Option<O>>
+pub fn optional_argument_with<'a, F, O>(
+    lex: &mut Lexer<'a>,
+    local: Style,
+    f: F,
+) -> ParseResult<'a, Option<O>>
+where
+    F: for<'l> FnOnce(&'l mut Lexer<'a>, Style) -> ParseResult<'a, Option<O>>,
 {
     lex.consume_whitespace();
     if lex.current == Token::Symbol('[') {
@@ -347,7 +372,11 @@ pub fn optional_argument_with<'a, F, O>(lex: &mut Lexer<'a>, local: Style, f: F)
 /// otherwise it will return `Ok`.
 ///
 /// This function _will_ advance the lexer.
-pub fn expect_type<'a>(lex: &mut Lexer<'a>, local: Style, expected: AtomType) -> ParseResult<'a, Symbol> {
+pub fn expect_type<'a>(
+    lex: &mut Lexer<'a>,
+    local: Style,
+    expected: AtomType,
+) -> ParseResult<'a, Symbol> {
     lex.consume_whitespace();
     if let Some(ParseNode::Symbol(sym)) = symbol(lex, local)? {
         if sym.atom_type == expected {
@@ -380,8 +409,7 @@ pub fn color<'a>(lex: &mut Lexer<'a>, _: Style) -> ParseResult<'a, RGBA> {
 
 pub fn environment_name<'a>(lex: &mut Lexer<'a>, _: Style) -> ParseResult<'a, Environment> {
     let name = lex.alphanumeric();
-    Environment::try_from_str(name)
-        .ok_or(ParseError::Todo)
+    Environment::try_from_str(name).ok_or(ParseError::Todo)
 }
 
 /// This function is the API entry point for parsing tex.
@@ -401,16 +429,16 @@ pub fn parse(input: &str) -> ParseResult<Vec<ParseNode>> {
 /// negatives when used for other things.
 fn codepoint_atom_type(codepoint: char) -> Option<AtomType> {
     Some(match codepoint {
-             'a' ..= 'z' | 'A' ..= 'Z' | '0' ..= '9' | 'Α' ..= 'Ω' | 'α' ..= 'ω' => AtomType::Alpha,
-             '*' | '+' | '-' => AtomType::Binary,
-             '[' | '(' => AtomType::Open,
-             ']' | ')' | '?' | '!' => AtomType::Close,
-             '=' | '<' | '>' | ':' => AtomType::Relation,
-             ',' | ';' => AtomType::Punctuation,
-             '|' => AtomType::Fence,
-             '/' | '@' | '.' | '"' => AtomType::Alpha,
-             _ => return None,
-         })
+        'a'..='z' | 'A'..='Z' | '0'..='9' | 'Α'..='Ω' | 'α'..='ω' => AtomType::Alpha,
+        '*' | '+' | '-' => AtomType::Binary,
+        '[' | '(' => AtomType::Open,
+        ']' | ')' | '?' | '!' => AtomType::Close,
+        '=' | '<' | '>' | ':' => AtomType::Relation,
+        ',' | ';' => AtomType::Punctuation,
+        '|' => AtomType::Fence,
+        '/' | '@' | '.' | '"' => AtomType::Alpha,
+        _ => return None,
+    })
 }
 
 // --------------
@@ -426,12 +454,16 @@ mod tests {
         let mut errs: Vec<String> = Vec::new();
         should_pass!(errs, parse, [r"\frac\alpha\beta", r"\frac\int2"]);
         should_fail!(errs, parse, [r"\frac \left(1 + 2\right) 3"]);
-        should_equate!(errs,
-                       parse,
-                       [(r"\frac12", r"\frac{1}{2}"),
-                        (r"\frac \sqrt2 3", r"\frac{\sqrt2}{3}"),
-                        (r"\frac \frac 1 2 3", r"\frac{\frac12}{3}"),
-                        (r"\frac 1 \sqrt2", r"\frac{1}{\sqrt2}")]);
+        should_equate!(
+            errs,
+            parse,
+            [
+                (r"\frac12", r"\frac{1}{2}"),
+                (r"\frac \sqrt2 3", r"\frac{\sqrt2}{3}"),
+                (r"\frac \frac 1 2 3", r"\frac{\frac12}{3}"),
+                (r"\frac 1 \sqrt2", r"\frac{1}{\sqrt2}")
+            ]
+        );
         display_errors!(errs);
     }
 
@@ -439,14 +471,18 @@ mod tests {
     fn radicals() {
         let mut errs: Vec<String> = Vec::new();
         // TODO: Add optional paramaters for radicals
-        should_pass!(errs,
-                     parse,
-                     [r"\sqrt{x}",
-                      r"\sqrt2",
-                      r"\sqrt\alpha",
-                      r"1^\sqrt2",
-                      r"\alpha_\sqrt{1+2}",
-                      r"\sqrt\sqrt2"]);
+        should_pass!(
+            errs,
+            parse,
+            [
+                r"\sqrt{x}",
+                r"\sqrt2",
+                r"\sqrt\alpha",
+                r"1^\sqrt2",
+                r"\alpha_\sqrt{1+2}",
+                r"\sqrt\sqrt2"
+            ]
+        );
         should_fail!(errs, parse, [r"\sqrt", r"\sqrt_2", r"\sqrt^2"]);
         should_equate!(errs, parse, [(r"\sqrt2", r"\sqrt{2}")]);
         should_differ!(errs, parse, [(r"\sqrt2_3", r"\sqrt{2_3}")]);
@@ -456,50 +492,66 @@ mod tests {
     #[test]
     fn scripts() {
         let mut errs: Vec<String> = Vec::new();
-        should_pass!(errs,
-                     parse,
-                     [r"1_2^3",
-                      r"_1",
-                      r"^\alpha",
-                      r"_2^\alpha",
-                      r"1_\frac12",
-                      r"2^\alpha",
-                      r"x_{1+2}",
-                      r"x^{2+3}",
-                      r"x^{1+2}_{2+3}",
-                      r"a^{b^c}",
-                      r"{a^b}^c",
-                      r"a_{b^c}",
-                      r"{a_b}^c",
-                      r"a^{b_c}",
-                      r"{a^b}_c",
-                      r"a_{b_c}",
-                      r"{a_b}_c"]);
-        should_fail!(errs,
-                     parse,
-                     [r"1_", r"1^", r"x_x_x", r"x^x_x^x", r"x^x^x", r"x_x^x_x"]);
-        should_equate!(errs,
-                       parse,
-                       [(r"x_\alpha^\beta", r"x^\beta_\alpha"), (r"_2^3", r"^3_2")]);
+        should_pass!(
+            errs,
+            parse,
+            [
+                r"1_2^3",
+                r"_1",
+                r"^\alpha",
+                r"_2^\alpha",
+                r"1_\frac12",
+                r"2^\alpha",
+                r"x_{1+2}",
+                r"x^{2+3}",
+                r"x^{1+2}_{2+3}",
+                r"a^{b^c}",
+                r"{a^b}^c",
+                r"a_{b^c}",
+                r"{a_b}^c",
+                r"a^{b_c}",
+                r"{a^b}_c",
+                r"a_{b_c}",
+                r"{a_b}_c"
+            ]
+        );
+        should_fail!(
+            errs,
+            parse,
+            [r"1_", r"1^", r"x_x_x", r"x^x_x^x", r"x^x^x", r"x_x^x_x"]
+        );
+        should_equate!(
+            errs,
+            parse,
+            [(r"x_\alpha^\beta", r"x^\beta_\alpha"), (r"_2^3", r"^3_2")]
+        );
         display_errors!(errs);
     }
 
     #[test]
     fn delimited() {
         let mut errs: Vec<String> = Vec::new();
-        should_pass!(errs,
-                     parse,
-                     [r"\left(\right)",
-                      r"\left.\right)",
-                      r"\left(\right.",
-                      r"\left\vert\right)",
-                      r"\left(\right\vert"]);
-        should_fail!(errs,
-                     parse,
-                     [r"\left1\right)",
-                      r"\left.\right1",
-                      r"\left",
-                      r"\left.{1 \right."]);
+        should_pass!(
+            errs,
+            parse,
+            [
+                r"\left(\right)",
+                r"\left.\right)",
+                r"\left(\right.",
+                r"\left\vert\right)",
+                r"\left(\right\vert"
+            ]
+        );
+        should_fail!(
+            errs,
+            parse,
+            [
+                r"\left1\right)",
+                r"\left.\right1",
+                r"\left",
+                r"\left.{1 \right."
+            ]
+        );
         display_errors!(errs);
     }
 }

@@ -1,5 +1,6 @@
-#[derive(Serialize, Deserialize)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+use serde_derive::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct RGBA(pub u8, pub u8, pub u8, pub u8);
 
 impl RGBA {
@@ -9,7 +10,7 @@ impl RGBA {
     pub fn from_name(name: &str) -> Option<RGBA> {
         match COLOR_MAP.binary_search_by_key(&name, |&(name, color)| name) {
             Ok(idx) => Some(COLOR_MAP[idx].1),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -20,7 +21,7 @@ macro_rules! map {
     };
 }
 
-static COLOR_MAP: &[(&'static str, RGBA)] = map!{
+static COLOR_MAP: &[(&'static str, RGBA)] = map! {
     "black" => RGBA(0x00,0x00,0x00,0xff),
     "silver" => RGBA(0xc0,0xc0,0xc0,0xff),
     "gray" => RGBA(0x80,0x80,0x80,0xff),

@@ -1,7 +1,7 @@
-use super::{Glyph};
+use super::Glyph;
 use std::cmp::{max, min};
 
-use crate::dimensions::{Length, Font};
+use crate::dimensions::{Font, Length};
 
 #[derive(Debug)]
 enum Corner {
@@ -38,11 +38,11 @@ pub fn superscript_kern(base: &Glyph, script: &Glyph, shift: Length<Font>) -> Le
     let base_height = base.bbox.3;
     let script_depth = script.bbox.1 + shift;
 
-    let value1 = kern_from(base, base_height, Corner::TopRight) +
-    kern_from(script, base_height, Corner::BottomLeft);
+    let value1 = kern_from(base, base_height, Corner::TopRight)
+        + kern_from(script, base_height, Corner::BottomLeft);
 
-    let value2 = kern_from(base, script_depth, Corner::TopRight) +
-    kern_from(script, script_depth, Corner::BottomLeft);
+    let value2 = kern_from(base, script_depth, Corner::TopRight)
+        + kern_from(script, script_depth, Corner::BottomLeft);
 
     max(value1, value2)
 }
@@ -51,11 +51,11 @@ pub fn subscript_kern(base: &Glyph, script: &Glyph, shift: Length<Font>) -> Leng
     let base_depth = base.bbox.1;
     let script_height = script.bbox.3 - shift;
 
-    let value1 = kern_from(base, base_depth, Corner::BottomRight) +
-    kern_from(script, base_depth, Corner::TopLeft);
+    let value1 = kern_from(base, base_depth, Corner::BottomRight)
+        + kern_from(script, base_depth, Corner::TopLeft);
 
-    let value2 = kern_from(base, script_height, Corner::BottomRight) +
-    kern_from(script, script_height, Corner::TopLeft);
+    let value2 = kern_from(base, script_height, Corner::BottomRight)
+        + kern_from(script, script_height, Corner::TopLeft);
 
     min(value1, value2)
 }

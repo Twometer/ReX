@@ -7,8 +7,7 @@ use std::cmp::max;
 use std::io::Write;
 use std::path::Path;
 
-const HEADER: &'static str =
-r##"<!DOCTYPE html>
+const HEADER: &'static str = r##"<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -23,10 +22,12 @@ const END: &'static str = r"</body></html>";
 
 fn write_equations<W: Write>(f: &mut W, old: Equation, new: Equation) {
     writeln!(f, "<h2>{}</h2>", old.description).unwrap();
-    writeln!(f,
-             r#"<pre><code class="language-latex">{}</code></pre>"#,
-             old.tex)
-            .unwrap();
+    writeln!(
+        f,
+        r#"<pre><code class="language-latex">{}</code></pre>"#,
+        old.tex
+    )
+    .unwrap();
 
     let width = max(old.width, new.width);
     let height = max(old.height, new.height);
@@ -34,8 +35,9 @@ fn write_equations<W: Write>(f: &mut W, old: Equation, new: Equation) {
     let px_width = f64::from(width) / 1000.0 * 48.0;
     let px_height = f64::from(height) / 1000.0 * 48.0;
 
-    writeln!(f,
-             r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+    writeln!(
+        f,
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg width="{:2}" height="{:2}" viewBox="0 0 {} {}" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -47,11 +49,9 @@ fn write_equations<W: Write>(f: &mut W, old: Equation, new: Equation) {
         </style>
     </defs>
     <g font-family="rex" font-size="1000">"#,
-             px_width,
-             px_height,
-             width,
-             height)
-            .unwrap();
+        px_width, px_height, width, height
+    )
+    .unwrap();
 
     writeln!(f, r##"        <g class="blend old">"##).unwrap();
     write_objects(f, &old.render);
@@ -74,33 +74,36 @@ fn write_objects<W: Write>(f: &mut W, objects: &[Object]) {
 }
 
 fn write_rule<W: Write>(f: &mut W, rule: &DebugRule) {
-    writeln!(f,
-             r##"<rect x="{}" y ="{}" width="{}" height="{}"/>"##,
-             rule.x,
-             rule.y,
-             rule.width,
-             rule.height)
-            .expect("Failed to write to buffer!");
+    writeln!(
+        f,
+        r##"<rect x="{}" y ="{}" width="{}" height="{}"/>"##,
+        rule.x, rule.y, rule.width, rule.height
+    )
+    .expect("Failed to write to buffer!");
 }
 
 fn write_symbol<W: Write>(f: &mut W, sym: &DebugSymbol) {
     use std::char::from_u32;
 
     if sym.scale != 1. {
-        writeln!(f,
-                 r#"<text transform="translate({}, {}) scale({:.2})">{}</text>"#,
-                 sym.x,
-                 sym.y,
-                 sym.scale,
-                 from_u32(sym.codepoint).expect("Unabale to decode utf8 code-point!"))
-                .expect("Failed to write to buffer!");
+        writeln!(
+            f,
+            r#"<text transform="translate({}, {}) scale({:.2})">{}</text>"#,
+            sym.x,
+            sym.y,
+            sym.scale,
+            from_u32(sym.codepoint).expect("Unabale to decode utf8 code-point!")
+        )
+        .expect("Failed to write to buffer!");
     } else {
-        writeln!(f,
-                 r#"<text transform="translate({}, {})">{}</text>"#,
-                 sym.x,
-                 sym.y,
-                 from_u32(sym.codepoint).expect("Unabale to decode utf8 code-point!"))
-                .expect("Failed to write to buffer!");
+        writeln!(
+            f,
+            r#"<text transform="translate({}, {})">{}</text>"#,
+            sym.x,
+            sym.y,
+            from_u32(sym.codepoint).expect("Unabale to decode utf8 code-point!")
+        )
+        .expect("Failed to write to buffer!");
     }
 }
 

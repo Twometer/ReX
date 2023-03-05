@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 pub mod debug_render;
-pub mod svg_diff;
 pub mod svg;
+pub mod svg_diff;
 
-use std::path::Path;
 use self::debug_render::Equation;
 use bincode;
+use std::path::Path;
 
 pub fn load_bincode<P: AsRef<Path>>(path: P) -> Vec<Equation> {
     use std::fs::File;

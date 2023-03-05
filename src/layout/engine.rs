@@ -1,31 +1,41 @@
-use std::cmp::{min, max};
+use std::cmp::{max, min};
+
+use log::warn;
 
 use super::builders;
 use super::convert::AsLayoutNode;
-use super::{Alignment, Layout, LayoutNode, LayoutSettings, LayoutVariant, Style, ColorChange};
+use super::{Alignment, Layout, LayoutNode, LayoutSettings, LayoutVariant, Style};
 
-use crate::font::{
-    kerning::{superscript_kern, subscript_kern},
-    VariantGlyph,
-    AtomType
-};
 use super::convert::Scaled;
 use super::spacing::{atom_space, Spacing};
-use crate::parser::nodes::{BarThickness, MathStyle, ParseNode, Accent, Delimited, GenFraction, Radical, Scripts, Stack};
-use crate::parser::symbols::Symbol;
+use crate::dimensions::*;
 use crate::environments::Array;
-use crate::dimensions::{*};
+use crate::error::{LayoutError, LayoutResult};
+use crate::font::{
+    kerning::{subscript_kern, superscript_kern},
+    AtomType, VariantGlyph,
+};
 use crate::layout;
-use crate::error::{LayoutResult, LayoutError};
+use crate::parser::nodes::{
+    Accent, BarThickness, Delimited, GenFraction, MathStyle, ParseNode, Radical, Scripts, Stack,
+};
+use crate::parser::symbols::Symbol;
 
 /// Entry point to our recursive algorithm
-pub fn layout<'a, 'f: 'a>(nodes: &[ParseNode], config: LayoutSettings<'a, 'f>) -> LayoutResult<Layout<'f>> {
+pub fn layout<'a, 'f: 'a>(
+    nodes: &[ParseNode],
+    config: LayoutSettings<'a, 'f>,
+) -> LayoutResult<Layout<'f>> {
     layout_recurse(nodes, config, AtomType::Transparent)
 }
 
 /// This method takes the parsing nodes and layouts them to layout nodes.
 #[allow(unconditional_recursion)]
-fn layout_recurse<'a, 'f: 'a>(nodes: &[ParseNode], mut config: LayoutSettings<'a, 'f>, parent_next: AtomType) -> LayoutResult<Layout<'f>> {
+fn layout_recurse<'a, 'f: 'a>(
+    nodes: &[ParseNode],
+    mut config: LayoutSettings<'a, 'f>,
+    parent_next: AtomType,
+) -> LayoutResult<Layout<'f>> {
     let mut layout = Layout::new();
     let mut prev = AtomType::Transparent;
 
@@ -42,14 +52,19 @@ fn layout_recurse<'a, 'f: 'a>(nodes: &[ParseNode], mut config: LayoutSettings<'a
 
         let mut current = node.atom_type();
         if current == AtomType::Binary {
-            if prev == AtomType::Transparent || prev == AtomType::Binary ||
-               prev == AtomType::Relation || prev == AtomType::Open ||
-               prev == AtomType::Punctuation {
+            if prev == AtomType::Transparent
+                || prev == AtomType::Binary
+                || prev == AtomType::Relation
+                || prev == AtomType::Open
+                || prev == AtomType::Punctuation
+            {
                 current = AtomType::Alpha;
             } else if let AtomType::Operator(_) = prev {
                 current = AtomType::Alpha;
-            } else if next == AtomType::Relation || next == AtomType::Close ||
-                      next == AtomType::Punctuation {
+            } else if next == AtomType::Relation
+                || next == AtomType::Close
+                || next == AtomType::Punctuation
+            {
                 current = AtomType::Alpha;
             }
         }
@@ -77,7 +92,12 @@ fn layout_node<'a, 'f: 'a>(node: &ParseNode, config: LayoutSettings<'a, 'f>) -> 
 }
 
 impl<'f> Layout<'f> {
-    fn dispatch<'a>(&mut self, config: LayoutSettings<'a, 'f>, node: &ParseNode, next: AtomType) -> LayoutResult<()> {
+    fn dispatch<'a>(
+        &mut self,
+        config: LayoutSettings<'a, 'f>,
+        node: &ParseNode,
+        next: AtomType,
+    ) -> LayoutResult<()> {
         match *node {
             ParseNode::Symbol(sym) => self.symbol(sym, config)?,
             ParseNode::Scripts(ref script) => self.scripts(script, config)?,
@@ -108,7 +128,7 @@ impl<'f> Layout<'f> {
         // symbol and vertical center it.
         match sym.atom_type {
             AtomType::Operator(_) => self.largeop(sym, config)?,
-            _ => self.add_node(config.ctx.glyph(sym.codepoint)?.as_layout(config)?)
+            _ => self.add_node(config.ctx.glyph(sym.codepoint)?.as_layout(config)?),
         }
         Ok(())
     }
@@ -117,7 +137,12 @@ impl<'f> Layout<'f> {
         let glyph = config.ctx.glyph(sym.codepoint)?;
         if config.style > Style::Text {
             let axis_offset = config.ctx.constants.axis_height.scaled(config);
-            let largeop = config.ctx.vert_variant(sym.codepoint, config.ctx.constants.display_operator_min_height * config.ctx.units_per_em)?
+            let largeop = config
+                .ctx
+                .vert_variant(
+                    sym.codepoint,
+                    config.ctx.constants.display_operator_min_height * config.ctx.units_per_em,
+                )?
                 .as_layout(config)?;
             let shift = (largeop.height + largeop.depth) * 0.5 - axis_offset;
             self.add_node(vbox!(offset: shift; largeop));
@@ -133,7 +158,9 @@ impl<'f> Layout<'f> {
         //       no correction takes place.
         // [ ] WideAccent vs Accent: Don't expand Accent types.
         let base = layout(&acc.nucleus, config.cramped())?;
-        let accent_variant = config.ctx.horz_variant(acc.symbol.codepoint, config.to_font(base.width))?;
+        let accent_variant = config
+            .ctx
+            .horz_variant(acc.symbol.codepoint, config.to_font(base.width))?;
         let accent = accent_variant.as_layout(config)?;
 
         // Attachment points for accent & base are calculated by
@@ -172,18 +199,27 @@ impl<'f> Layout<'f> {
 
         // Do not place the accent any further than you would if given
         // an `x` character in the current style.
-        let delta = -min(base.height, config.ctx.constants.accent_base_height.scaled(config));
+        let delta = -min(
+            base.height,
+            config.ctx.constants.accent_base_height.scaled(config),
+        );
 
         // By not placing an offset on this vbox, we are assured that the
         // baseline will match the baseline of `base.as_node()`
-        self.add_node(vbox!(hbox!(kern!(horz: base_offset - acc_offset), accent),
-                            kern!(vert: delta),
-                            base.as_node()));
-        
+        self.add_node(vbox!(
+            hbox!(kern!(horz: base_offset - acc_offset), accent),
+            kern!(vert: delta),
+            base.as_node()
+        ));
+
         Ok(())
     }
 
-    fn delimited<'a>(&mut self, delim: &Delimited, config: LayoutSettings<'a, 'f>) -> Result<(), LayoutError> {
+    fn delimited<'a>(
+        &mut self,
+        delim: &Delimited,
+        config: LayoutSettings<'a, 'f>,
+    ) -> Result<(), LayoutError> {
         let inner = layout(&delim.inner, config)?.as_node();
 
         let min_height = config.ctx.constants.delimited_sub_formula_min_height * config.font_size;
@@ -196,26 +232,30 @@ impl<'f> Layout<'f> {
             let axis = config.ctx.constants.axis_height * config.font_size;
 
             let clearance = max(inner.height - axis, axis - inner.depth) * 2.0;
-            let clearance = max(clearance * config.ctx.constants.delimiter_factor,
-                            inner.height - inner.depth - config.ctx.constants.delimiter_short_fall * config.font_size);
+            let clearance = max(
+                clearance * config.ctx.constants.delimiter_factor,
+                inner.height
+                    - inner.depth
+                    - config.ctx.constants.delimiter_short_fall * config.font_size,
+            );
             let clearance = config.to_font(clearance);
 
             let left = match delim.left.codepoint {
                 '.' => kern!(horz: null_delimiter_space),
-                _ => {
-                    config.ctx.vert_variant(delim.left.codepoint, clearance)?
-                        .as_layout(config)?
-                        .centered(axis)
-                }
+                _ => config
+                    .ctx
+                    .vert_variant(delim.left.codepoint, clearance)?
+                    .as_layout(config)?
+                    .centered(axis),
             };
 
             let right = match delim.right.codepoint {
                 '.' => kern!(horz: null_delimiter_space),
-                _ => {
-                    config.ctx.vert_variant(delim.right.codepoint, clearance)?
-                        .as_layout(config)?
-                        .centered(axis)
-                }
+                _ => config
+                    .ctx
+                    .vert_variant(delim.right.codepoint, clearance)?
+                    .as_layout(config)?
+                    .centered(axis),
             };
 
             self.add_node(left);
@@ -240,7 +280,11 @@ impl<'f> Layout<'f> {
         Ok(())
     }
 
-    fn scripts<'a>(&mut self, scripts: &Scripts, config: LayoutSettings<'a, 'f>) -> Result<(), LayoutError> {
+    fn scripts<'a>(
+        &mut self,
+        scripts: &Scripts,
+        config: LayoutSettings<'a, 'f>,
+    ) -> Result<(), LayoutError> {
         // See: https://tug.org/TUGboat/tb27-1/tb86jackowski.pdf
         //      https://www.tug.org/tugboat/tb30-1/tb94vieth.pdf
         let base = match scripts.base {
@@ -300,7 +344,8 @@ impl<'f> Layout<'f> {
                         if let Some(sup_sym) = sup.is_symbol() {
                             let bg = config.ctx.glyph_from_gid(base_sym.gid)?;
                             let sg = config.ctx.glyph_from_gid(sup_sym.gid)?;
-                            let kern = superscript_kern(&bg, &sg, config.to_font(adjust_up)).scaled(config);
+                            let kern = superscript_kern(&bg, &sg, config.to_font(adjust_up))
+                                .scaled(config);
                             sup_kern = base_sym.italics + kern;
                         } else {
                             sup_kern = base_sym.italics;
@@ -309,19 +354,32 @@ impl<'f> Layout<'f> {
                 }
             }
 
-            let drop_max = config.ctx.constants.superscript_baseline_drop_max.scaled(config);
-            adjust_up = max!(adjust_up,
-                            height - drop_max,
-                            config.ctx.constants.superscript_bottom_min.scaled(config) - sup.depth);
+            let drop_max = config
+                .ctx
+                .constants
+                .superscript_baseline_drop_max
+                .scaled(config);
+            adjust_up = max!(
+                adjust_up,
+                height - drop_max,
+                config.ctx.constants.superscript_bottom_min.scaled(config) - sup.depth
+            );
         }
 
         // We calculate the vertical position of the subscripts.  The `adjust_down`
         // variable will describe how far we need to adjust the subscript down.
         if scripts.subscript.is_some() {
             // Use default font values for first iteration of vertical height.
-            adjust_down = max!(config.ctx.constants.subscript_shift_down.scaled(config),
-                                sub.height - config.ctx.constants.subscript_top_max.scaled(config),
-                                config.ctx.constants.subscript_baseline_drop_min.scaled(config) - base.depth);
+            adjust_down = max!(
+                config.ctx.constants.subscript_shift_down.scaled(config),
+                sub.height - config.ctx.constants.subscript_top_max.scaled(config),
+                config
+                    .ctx
+                    .constants
+                    .subscript_baseline_drop_min
+                    .scaled(config)
+                    - base.depth
+            );
 
             // Provided that the base and subscript are symbols, we apply
             // kerning values found in the kerning font table
@@ -330,14 +388,19 @@ impl<'f> Layout<'f> {
                     if AtomType::Operator(false) == b.atom_type() {
                         // This recently changed in LuaTeX.  See `nolimitsmode`.
                         // This needs to be the glyph information _after_ layout for base.
-                        sub_kern = -config.ctx.glyph_from_gid(base_sym.gid)?.italics.scaled(config);
+                        sub_kern = -config
+                            .ctx
+                            .glyph_from_gid(base_sym.gid)?
+                            .italics
+                            .scaled(config);
                     }
                 }
 
                 if let (Some(ssym), Some(bsym)) = (sub.is_symbol(), base.is_symbol()) {
                     let bg = config.ctx.glyph_from_gid(bsym.gid)?;
                     let sg = config.ctx.glyph_from_gid(ssym.gid)?;
-                    sub_kern += subscript_kern(&bg, &sg, config.to_font(adjust_down)).scaled(config);
+                    sub_kern +=
+                        subscript_kern(&bg, &sg, config.to_font(adjust_down)).scaled(config);
                 }
             }
         }
@@ -367,7 +430,7 @@ impl<'f> Layout<'f> {
         }
 
         contents.set_offset(adjust_down);
-        if scripts.subscript.is_some() { 
+        if scripts.subscript.is_some() {
             if !sub_kern.is_zero() {
                 sub.contents.insert(0, kern!(horz: sub_kern));
                 sub.width += sub_kern;
@@ -377,26 +440,44 @@ impl<'f> Layout<'f> {
 
         self.add_node(base.as_node());
         self.add_node(contents.build());
-        
+
         Ok(())
     }
 
-    fn operator_limits<'a>(&mut self, base: Layout<'f>, sup: Layout<'f>, sub: Layout<'f>, config: LayoutSettings<'a, 'f>) -> Result<(), LayoutError> {
+    fn operator_limits<'a>(
+        &mut self,
+        base: Layout<'f>,
+        sup: Layout<'f>,
+        sub: Layout<'f>,
+        config: LayoutSettings<'a, 'f>,
+    ) -> Result<(), LayoutError> {
         // Provided that the operator is a simple symbol, we need to account
         // for the italics correction of the symbol.  This how we "center"
         // the superscript and subscript of the limits.
         let delta = match base.is_symbol() {
             Some(gly) => gly.italics,
-            None => Length::zero()
+            None => Length::zero(),
         };
 
         // Next we calculate the kerning required to separate the superscript
         // and subscript (respectively) from the base.
-        let sup_kern = max(config.ctx.constants.upper_limit_baseline_rise_min.scaled(config),
-                        config.ctx.constants.upper_limit_gap_min.scaled(config) - sup.depth);
-        let sub_kern = max(config.ctx.constants.lower_limit_gap_min.scaled(config),
-                        config.ctx.constants.lower_limit_baseline_drop_min.scaled(config) - sub.height) -
-                    base.depth;
+        let sup_kern = max(
+            config
+                .ctx
+                .constants
+                .upper_limit_baseline_rise_min
+                .scaled(config),
+            config.ctx.constants.upper_limit_gap_min.scaled(config) - sup.depth,
+        );
+        let sub_kern = max(
+            config.ctx.constants.lower_limit_gap_min.scaled(config),
+            config
+                .ctx
+                .constants
+                .lower_limit_baseline_drop_min
+                .scaled(config)
+                - sub.height,
+        ) - base.depth;
 
         // We need to preserve the baseline of the operator when
         // attaching the scripts.  Since the base should already
@@ -426,11 +507,15 @@ impl<'f> Layout<'f> {
                 sub.as_node()
             ]
         ]);
-        
+
         Ok(())
     }
 
-    fn frac<'a>(&mut self, frac: &GenFraction, config: LayoutSettings<'a, 'f>) -> Result<(), LayoutError> {
+    fn frac<'a>(
+        &mut self,
+        frac: &GenFraction,
+        config: LayoutSettings<'a, 'f>,
+    ) -> Result<(), LayoutError> {
         let config = match frac.style {
             MathStyle::NoChange => config.clone(),
             MathStyle::Display => config.with_display(),
@@ -464,15 +549,47 @@ impl<'f> Layout<'f> {
         let gap_denom;
 
         if config.style > Style::Text {
-            shift_up = config.ctx.constants.fraction_numerator_display_style_shift_up.scaled(config);
-            shift_down = config.ctx.constants.fraction_denominator_display_style_shift_down.scaled(config);
-            gap_num = config.ctx.constants.fraction_num_display_style_gap_min.scaled(config);
-            gap_denom = config.ctx.constants.fraction_denom_display_style_gap_min.scaled(config);
+            shift_up = config
+                .ctx
+                .constants
+                .fraction_numerator_display_style_shift_up
+                .scaled(config);
+            shift_down = config
+                .ctx
+                .constants
+                .fraction_denominator_display_style_shift_down
+                .scaled(config);
+            gap_num = config
+                .ctx
+                .constants
+                .fraction_num_display_style_gap_min
+                .scaled(config);
+            gap_denom = config
+                .ctx
+                .constants
+                .fraction_denom_display_style_gap_min
+                .scaled(config);
         } else {
-            shift_up = config.ctx.constants.fraction_numerator_shift_up.scaled(config);
-            shift_down = config.ctx.constants.fraction_denominator_shift_down.scaled(config);
-            gap_num = config.ctx.constants.fraction_numerator_gap_min.scaled(config);
-            gap_denom = config.ctx.constants.fraction_denominator_gap_min.scaled(config);
+            shift_up = config
+                .ctx
+                .constants
+                .fraction_numerator_shift_up
+                .scaled(config);
+            shift_down = config
+                .ctx
+                .constants
+                .fraction_denominator_shift_down
+                .scaled(config);
+            gap_num = config
+                .ctx
+                .constants
+                .fraction_numerator_gap_min
+                .scaled(config);
+            gap_denom = config
+                .ctx
+                .constants
+                .fraction_denominator_gap_min
+                .scaled(config);
         }
 
         let kern_num = max(shift_up - axis - bar * 0.5, gap_num - numer.depth);
@@ -495,9 +612,14 @@ impl<'f> Layout<'f> {
             None => kern!(horz: null_delimiter_space),
             Some(sym) => {
                 let clearance = max(inner.height - axis_height, axis_height - inner.depth) * 2.0;
-                let clearance = max(clearance, config.ctx.constants.delimited_sub_formula_min_height * config.font_size);
+                let clearance = max(
+                    clearance,
+                    config.ctx.constants.delimited_sub_formula_min_height * config.font_size,
+                );
 
-                config.ctx.vert_variant(sym.codepoint, config.to_font(clearance))?
+                config
+                    .ctx
+                    .vert_variant(sym.codepoint, config.to_font(clearance))?
                     .as_layout(config)?
                     .centered(axis_height.scaled(config))
             }
@@ -507,9 +629,14 @@ impl<'f> Layout<'f> {
             None => kern!(horz: null_delimiter_space),
             Some(sym) => {
                 let clearance = max(inner.height - axis_height, axis_height - inner.depth) * 2.0;
-                let clearance = max(clearance, config.ctx.constants.delimited_sub_formula_min_height * config.font_size);
+                let clearance = max(
+                    clearance,
+                    config.ctx.constants.delimited_sub_formula_min_height * config.font_size,
+                );
 
-                config.ctx.vert_variant(sym.codepoint, config.to_font(clearance))?
+                config
+                    .ctx
+                    .vert_variant(sym.codepoint, config.to_font(clearance))?
                     .as_layout(config)?
                     .centered(axis_height.scaled(config))
             }
@@ -518,18 +645,26 @@ impl<'f> Layout<'f> {
         self.add_node(left);
         self.add_node(inner);
         self.add_node(right);
-        
+
         Ok(())
     }
 
-    fn radical<'a>(&mut self, rad: &Radical, config: LayoutSettings<'a, 'f>) -> Result<(), LayoutError> {
+    fn radical<'a>(
+        &mut self,
+        rad: &Radical,
+        config: LayoutSettings<'a, 'f>,
+    ) -> Result<(), LayoutError> {
         // reference rule 11 from pg 443 of TeXBook
         let contents = layout(&rad.inner, config.cramped())?.as_node();
 
         // obtain minimum clearange between radicand and radical bar
         // and cache other sizes that will be needed
         let gap = match config.style >= Style::Display {
-            true => config.ctx.constants.radical_display_style_vertical_gap.scaled(config),
+            true => config
+                .ctx
+                .constants
+                .radical_display_style_vertical_gap
+                .scaled(config),
             false => config.ctx.constants.radical_vertical_gap.scaled(config),
         };
 
@@ -538,7 +673,10 @@ impl<'f> Layout<'f> {
 
         // determine size of radical glyph
         let inner_height = (contents.height - contents.depth) + gap + rule_thickness;
-        let sqrt = config.ctx.vert_variant('√', config.to_font(inner_height))?.as_layout(config)?;
+        let sqrt = config
+            .ctx
+            .vert_variant('√', config.to_font(inner_height))?
+            .as_layout(config)?;
 
         // pad between radicand and radical bar
         let delta = (sqrt.height - sqrt.depth - inner_height) * 0.5 + rule_thickness;
@@ -553,15 +691,21 @@ impl<'f> Layout<'f> {
         let top_padding = rule_ascender - rule_thickness;
 
         self.add_node(vbox![offset: offset; sqrt]);
-        self.add_node(vbox![kern!(vert: top_padding),
-                            rule!(width:  contents.width, height: rule_thickness),
-                            kern!(vert: gap),
-                            contents]);
-        
+        self.add_node(vbox![
+            kern!(vert: top_padding),
+            rule!(width:  contents.width, height: rule_thickness),
+            kern!(vert: gap),
+            contents
+        ]);
+
         Ok(())
     }
 
-    fn substack<'a>(&mut self, stack: &Stack, config: LayoutSettings<'a, 'f>) -> Result<(), LayoutError> {
+    fn substack<'a>(
+        &mut self,
+        stack: &Stack,
+        config: LayoutSettings<'a, 'f>,
+    ) -> Result<(), LayoutError> {
         // Don't bother constructing a new node if there is nothing.
         if stack.lines.len() == 0 {
             return Ok(());
@@ -591,22 +735,24 @@ impl<'f> Layout<'f> {
 
         // The line gap will be taken from STACK_GAP constants
         let gap_min = if config.style > Style::Text {
-            config.ctx.constants.stack_display_style_gap_min.scaled(config)
+            config
+                .ctx
+                .constants
+                .stack_display_style_gap_min
+                .scaled(config)
         } else {
             config.ctx.constants.stack_gap_min.scaled(config)
         };
 
         // No idea.
         let gap_try = if config.style > Style::Text {
-            config.ctx.constants.stack_top_display_style_shift_up
-            - config.ctx.constants.axis_height
-            + config.ctx.constants.stack_bottom_shift_down
-            - config.ctx.constants.accent_base_height * 2.0
+            config.ctx.constants.stack_top_display_style_shift_up - config.ctx.constants.axis_height
+                + config.ctx.constants.stack_bottom_shift_down
+                - config.ctx.constants.accent_base_height * 2.0
         } else {
-            config.ctx.constants.stack_top_shift_up
-            - config.ctx.constants.axis_height
-            + config.ctx.constants.stack_bottom_shift_down
-            - config.ctx.constants.accent_base_height * 2.0
+            config.ctx.constants.stack_top_shift_up - config.ctx.constants.axis_height
+                + config.ctx.constants.stack_bottom_shift_down
+                - config.ctx.constants.accent_base_height * 2.0
         }
         .scaled(config);
 
@@ -625,14 +771,19 @@ impl<'f> Layout<'f> {
         }
 
         // Vertically center the stack to the axis
-        let offset = (vbox.height + vbox.depth) * 0.5 - config.ctx.constants.axis_height.scaled(config);
+        let offset =
+            (vbox.height + vbox.depth) * 0.5 - config.ctx.constants.axis_height.scaled(config);
         vbox.set_offset(offset);
         self.add_node(vbox.build());
-        
+
         Ok(())
     }
 
-    fn array<'a>(&mut self, array: &Array, config: LayoutSettings<'a, 'f>) -> Result<(), LayoutError> {
+    fn array<'a>(
+        &mut self,
+        array: &Array,
+        config: LayoutSettings<'a, 'f>,
+    ) -> Result<(), LayoutError> {
         // TODO: let jot = UNITS_PER_EM / 4;
         let strut_height = Length::new(0.7, Em) * config.font_size; // \strutbox height = 0.7\baseline
         let strut_depth = Length::new(0.3, Em) * config.font_size; // \strutbox depth  = 0.3\baseline
@@ -668,7 +819,7 @@ impl<'f> Layout<'f> {
                         max_depth = max(max_depth, -square.depth);
                         col_widths[col_idx] = max(col_widths[col_idx], square.width);
                         square
-                    },
+                    }
                     _ => Layout::new(),
                 };
 
@@ -688,7 +839,9 @@ impl<'f> Layout<'f> {
         // If there are no delimiters, insert a null space.  Otherwise we insert
         // the delimiters _after_ we have laidout the body of the matrix.
         if array.left_delimiter.is_none() {
-            hbox.add_node(kern![horz: config.ctx.constants.null_delimiter_space * config.font_size]);
+            hbox.add_node(
+                kern![horz: config.ctx.constants.null_delimiter_space * config.font_size],
+            );
         }
 
         // layout the body of the matrix
@@ -730,7 +883,9 @@ impl<'f> Layout<'f> {
         }
 
         if array.right_delimiter.is_none() {
-            hbox.add_node(kern![horz: config.ctx.constants.null_delimiter_space * config.font_size]);
+            hbox.add_node(
+                kern![horz: config.ctx.constants.null_delimiter_space * config.font_size],
+            );
         }
 
         // TODO: Reference array vertical alignment (optional [bt] arguments)
@@ -753,11 +908,15 @@ impl<'f> Layout<'f> {
         // place delimiters in an hbox surrounding the matrix body
         let mut hbox = builders::HBox::new();
         let axis = config.ctx.constants.axis_height.scaled(config);
-        let clearance = max(height * config.ctx.constants.delimiter_factor,
-                            height - config.ctx.constants.delimiter_short_fall * config.font_size);
+        let clearance = max(
+            height * config.ctx.constants.delimiter_factor,
+            height - config.ctx.constants.delimiter_short_fall * config.font_size,
+        );
 
         if let Some(left) = array.left_delimiter {
-            let left = config.ctx.vert_variant(left.codepoint, config.to_font(clearance))?
+            let left = config
+                .ctx
+                .vert_variant(left.codepoint, config.to_font(clearance))?
                 .as_layout(config)?
                 .centered(axis);
             hbox.add_node(left);
@@ -765,7 +924,9 @@ impl<'f> Layout<'f> {
 
         hbox.add_node(vbox);
         if let Some(right) = array.right_delimiter {
-            let right = config.ctx.vert_variant(right.codepoint, config.to_font(clearance))?
+            let right = config
+                .ctx
+                .vert_variant(right.codepoint, config.to_font(clearance))?
                 .as_layout(config)?
                 .centered(axis);
             hbox.add_node(right);

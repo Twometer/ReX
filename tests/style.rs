@@ -1,11 +1,11 @@
 #![allow(non_upper_case_globals)]
-extern crate rex;
 extern crate font_types as font;
+extern crate rex;
 
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_yaml;
 extern crate bincode;
+extern crate serde_yaml;
 
 use rex::Renderer;
 
@@ -25,29 +25,33 @@ const OTHER: &'static str = "\\nabla\\partial";
 const GREEK_LOWER: &'static str = "\\alpha\\beta\\gamma\\delta\\epsilon\\varepsilon\\zeta\
      \\zeta\\eta\\theta\\vartheta\\iota\\kappa\\lambda\\mu\\nu\
      \\xi\\phi\\rho\\varrho\\sigma\\tau\\upsilon\\phi\\varphi\\chi\\psi\\omega";
-const GREEK_UPPER: &'static str = "\\Alpha\\Beta\\Gamma\\Delta\\Epsilon\\Zeta\\Eta\\Theta\\Iota\\Kappa\
+const GREEK_UPPER: &'static str =
+    "\\Alpha\\Beta\\Gamma\\Delta\\Epsilon\\Zeta\\Eta\\Theta\\Iota\\Kappa\
      \\Lambda\\Mu\\Nu\\Pi\\Rho\\Sigma\\Tau\\Upsilon\\Phi\\Chi\\Psi\\Omega";
 
-static CONTENTS: &[&'static str] = &[LATIN_LOWER,
-                                     LATIN_UPPER,
-                                     DIGIT,
-                                     OTHER,
-                                     GREEK_LOWER,
-                                     GREEK_UPPER];
+static CONTENTS: &[&'static str] = &[
+    LATIN_LOWER,
+    LATIN_UPPER,
+    DIGIT,
+    OTHER,
+    GREEK_LOWER,
+    GREEK_UPPER,
+];
 static WEIGHTS: &[&'static str] = &[r"", r"\mathit{", r"\mathbf{"];
-static STYLES: &[&'static str] = &[r"",
-                                   r"\mathrm{",
-                                   r"\mathscr{",
-                                   r"\mathfrak{",
-                                   r"\mathsf{",
-                                   r"\mathbb{",
-                                   r"\mathtt{"];
+static STYLES: &[&'static str] = &[
+    r"",
+    r"\mathrm{",
+    r"\mathscr{",
+    r"\mathfrak{",
+    r"\mathsf{",
+    r"\mathbb{",
+    r"\mathtt{",
+];
 
 fn tex_style(weight: &str, style: &str, content: &str) -> String {
     // Calculate worst case size
     let size = weight.len() + style.len() + content.len() + 4;
     let mut result = String::with_capacity(size);
-
 
     if weight != "" {
         result += weight;
@@ -87,12 +91,12 @@ fn render_styles() -> Vec<Equation> {
                     .render_to(&mut canvas, &tex)
                     .expect("failed to parse tex");
                 vec.push(Equation {
-                             tex: tex,
-                             description: "".to_string(),
-                             width: renderer.width.take(),
-                             height: renderer.height.take(),
-                             render: canvas,
-                         });
+                    tex: tex,
+                    description: "".to_string(),
+                    width: renderer.width.take(),
+                    height: renderer.height.take(),
+                    render: canvas,
+                });
             }
         }
     }
@@ -110,19 +114,20 @@ fn style() {
     if diff.len() != 0 {
         let count = diff.len();
         svg_diff::write_diff(STYLE_HTML, diff);
-        panic!("Detected {} formula changes. \
+        panic!(
+            "Detected {} formula changes. \
                 Please review the changes in `{}`",
-               count,
-               STYLE_HTML);
+            count, STYLE_HTML
+        );
     }
 }
 
 #[test]
 #[ignore]
 fn save_style() {
+    use common::svg;
     use std::fs::File;
     use std::io::BufWriter;
-    use common::svg;
 
     let rendered = render_styles();
     let out = File::create(STYLE_BINCODE).expect("failed to create bincode file for style tests");

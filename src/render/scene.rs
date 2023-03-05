@@ -1,22 +1,17 @@
-
-use pathfinder_renderer::{
-    scene::{Scene, DrawPath},
-    paint::{Paint, PaintId},
-};
-use pathfinder_content::{
-    outline::{Outline},
-    stroke::{StrokeStyle, LineCap, LineJoin, OutlineStrokeToFill},
-};
-use pathfinder_geometry::{
-    transform2d::Transform2F,
-    vector::Vector2F,
-    rect::RectF,
-};
-use pathfinder_color::ColorU;
 use super::{Backend, Cursor, Role};
 use crate::font::MathFont;
-use crate::parser::{color::RGBA};
+use crate::parser::color::RGBA;
 use font;
+use pathfinder_color::ColorU;
+use pathfinder_content::{
+    outline::Outline,
+    stroke::{LineCap, LineJoin, OutlineStrokeToFill, StrokeStyle},
+};
+use pathfinder_geometry::{rect::RectF, transform2d::Transform2F, vector::Vector2F};
+use pathfinder_renderer::{
+    paint::{Paint, PaintId},
+    scene::{DrawPath, Scene},
+};
 
 fn v_cursor(c: Cursor) -> Vector2F {
     Vector2F::new(c.x as f32, c.y as f32)
@@ -29,7 +24,7 @@ pub struct SceneWrapper<'a> {
     scene: &'a mut Scene,
     color_stack: Vec<PaintId>,
     transform: Transform2F,
-    paint: PaintId
+    paint: PaintId,
 }
 impl<'a> SceneWrapper<'a> {
     pub fn new(scene: &'a mut Scene) -> Self {
@@ -40,7 +35,7 @@ impl<'a> SceneWrapper<'a> {
             paint: scene.push_paint(&Paint::black()),
             scene,
             color_stack: Vec::new(),
-            transform
+            transform,
         }
     }
 }
@@ -56,7 +51,7 @@ impl<'a> Backend for SceneWrapper<'a> {
         let style = StrokeStyle {
             line_cap: LineCap::Square,
             line_join: LineJoin::Bevel,
-            line_width: 0.1
+            line_width: 0.1,
         };
         let outline = Outline::from_rect(RectF::new(v_cursor(pos), v_xy(width, height)));
         let mut stroke = OutlineStrokeToFill::new(&outline, style);
@@ -71,26 +66,32 @@ impl<'a> Backend for SceneWrapper<'a> {
             * Transform2F::from_translation(v_cursor(pos))
             * Transform2F::from_scale(v_xy(scale, -scale))
             * font.font_matrix();
-        
-        self.scene.push_draw_path(DrawPath::new(path.transformed(&tr), self.paint));
+
+        self.scene
+            .push_draw_path(DrawPath::new(path.transformed(&tr), self.paint));
     }
     fn rule(&mut self, pos: Cursor, width: f64, height: f64) {
         let origin = v_cursor(pos);
         let size = v_xy(width, height);
 
         let outline = Outline::from_rect(RectF::new(origin, size));
-        self.scene.push_draw_path(DrawPath::new(outline.transformed(&self.transform), self.paint));
+        self.scene.push_draw_path(DrawPath::new(
+            outline.transformed(&self.transform),
+            self.paint,
+        ));
     }
     fn begin_color(&mut self, RGBA(r, g, b, a): RGBA) {
         self.color_stack.push(self.paint);
-        self.paint = self.scene.push_paint(&Paint::from_color(ColorU::new(r, g, b, a)));
+        self.paint = self
+            .scene
+            .push_paint(&Paint::from_color(ColorU::new(r, g, b, a)));
     }
     fn end_color(&mut self) {
         self.paint = self.color_stack.pop().unwrap();
     }
 }
 
-use super::{Renderer};
+use super::Renderer;
 use crate::font::FontContext;
 use crate::layout::{LayoutSettings, Style};
 use pathfinder_export::{Export, FileFormat};

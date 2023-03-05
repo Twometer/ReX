@@ -2,14 +2,14 @@ extern crate rex;
 
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_yaml;
 extern crate bincode;
+extern crate serde_yaml;
 
-use std::convert::AsRef;
-use std::path::Path;
 use std::collections::BTreeMap;
+use std::convert::AsRef;
 use std::fs::File;
 use std::io::BufReader;
+use std::path::Path;
 
 use rex::Renderer;
 
@@ -45,8 +45,8 @@ fn collect_tests<P: AsRef<Path>>(path: P) -> Tests {
 fn load_history<P: AsRef<Path>>(path: P) -> Vec<Equation> {
     let file = File::open(path.as_ref()).expect("failed to open test collection");
     let mut reader = BufReader::new(file);
-    let tests: Vec<Equation> = bincode::deserialize_from(&mut reader)
-        .expect("failed to load historical test results");
+    let tests: Vec<Equation> =
+        bincode::deserialize_from(&mut reader).expect("failed to load historical test results");
 
     tests
 }
@@ -63,12 +63,12 @@ fn render_tests(tests: Tests) -> Vec<Equation> {
                     .expect("failed to parse tex");
                 let description = format!("{}: {}", category, snippets.description);
                 equations.push(Equation {
-                                   tex: equation.to_string(),
-                                   description: description,
-                                   width: renderer.width.take(),
-                                   height: renderer.height.take(),
-                                   render: canvas,
-                               });
+                    tex: equation.to_string(),
+                    description: description,
+                    width: renderer.width.take(),
+                    height: renderer.height.take(),
+                    render: canvas,
+                });
             }
         }
     }
@@ -78,10 +78,12 @@ fn render_tests(tests: Tests) -> Vec<Equation> {
 
 fn equation_diffs(old: &[Equation], new: &[Equation]) -> Vec<(Equation, Equation)> {
     if old.len() != new.len() {
-        panic!("Detected a change in the number of tests. Please be sure to run \
+        panic!(
+            "Detected a change in the number of tests. Please be sure to run \
                `cargo test --test layout -- --ignored` to update the tests first.\n\
                Note: This should only be done before there are any changes which can alter \
-               the result of a test.");
+               the result of a test."
+        );
     }
 
     let mut diff: Vec<(Equation, Equation)> = Vec::new();
@@ -104,18 +106,19 @@ fn layout() {
     if diff.len() != 0 {
         let count = diff.len();
         svg_diff::write_diff(LAYOUT_HTML, diff);
-        panic!("Detected {} formula changes. \
+        panic!(
+            "Detected {} formula changes. \
                 Please review the changes in `{}`",
-               count,
-               LAYOUT_HTML);
+            count, LAYOUT_HTML
+        );
     }
 }
 
 #[test]
 #[ignore]
 fn save_layout() {
-    use std::io::BufWriter;
     use common::svg;
+    use std::io::BufWriter;
 
     // Load the tests in yaml, and render it to bincode
     let tests = collect_tests(LAYOUT_YAML);

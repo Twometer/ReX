@@ -2,17 +2,16 @@ pub mod kerning;
 mod style;
 //mod unit;
 
-pub use unicode_math::AtomType;
 pub use style::style_symbol;
+pub use unicode_math::AtomType;
 
-use font::{opentype::{OpenTypeFont, math::MathHeader}, GlyphId};
-pub use font::opentype::math::{
-    assembly::{Direction},
-    MathConstants,
-    assembly::VariantGlyph
+pub use font::opentype::math::{assembly::Direction, assembly::VariantGlyph, MathConstants};
+use font::{
+    opentype::{math::MathHeader, OpenTypeFont},
+    GlyphId,
 };
 
-use crate::dimensions::{*};
+use crate::dimensions::*;
 use crate::error::FontError;
 
 pub type MathFont = OpenTypeFont;
@@ -27,16 +26,35 @@ pub struct FontContext<'f> {
 impl<'f> FontContext<'f> {
     pub fn glyph(&self, codepoint: char) -> Result<Glyph<'f>, FontError> {
         use font::Font;
-        let gid = self.font.gid_for_codepoint(codepoint as u32).ok_or(FontError::MissingGlyphCodepoint(codepoint))?;
+        let gid = self
+            .font
+            .gid_for_codepoint(codepoint as u32)
+            .ok_or(FontError::MissingGlyphCodepoint(codepoint))?;
         self.glyph_from_gid(gid.0 as u16)
     }
     pub fn glyph_from_gid(&self, gid: u16) -> Result<Glyph<'f>, FontError> {
-        use font::{Font};
+        use font::Font;
         let font = self.font;
-        let hmetrics = font.glyph_metrics(gid).ok_or(FontError::MissingGlyphGID(gid))?;
-        let italics = self.math.glyph_info.italics_correction_info.get(gid).map(|info| info.value).unwrap_or_default();
-        let attachment = self.math.glyph_info.top_accent_attachment.get(gid).map(|info| info.value).unwrap_or_default();
-        let glyph = font.glyph(GlyphId(gid as u32)).ok_or(FontError::MissingGlyphGID(gid))?;
+        let hmetrics = font
+            .glyph_metrics(gid)
+            .ok_or(FontError::MissingGlyphGID(gid))?;
+        let italics = self
+            .math
+            .glyph_info
+            .italics_correction_info
+            .get(gid)
+            .map(|info| info.value)
+            .unwrap_or_default();
+        let attachment = self
+            .math
+            .glyph_info
+            .top_accent_attachment
+            .get(gid)
+            .map(|info| info.value)
+            .unwrap_or_default();
+        let glyph = font
+            .glyph(GlyphId(gid as u32))
+            .ok_or(FontError::MissingGlyphGID(gid))?;
         let bbox = glyph.path.bounds();
         let ll = bbox.lower_left();
         let ur = bbox.upper_right();
@@ -53,7 +71,7 @@ impl<'f> FontContext<'f> {
                 Length::new(ur.y(), Font),
                 Length::new(ur.x(), Font),
                 Length::new(ll.y(), Font),
-            )
+            ),
         })
     }
     pub fn new(font: &'f MathFont) -> Self {
@@ -67,18 +85,38 @@ impl<'f> FontContext<'f> {
             font,
             math,
             units_per_em,
-            constants
+            constants,
         }
     }
-    pub fn vert_variant(&self, codepoint: char, height: Length<Font>) -> Result<VariantGlyph, FontError> {
+    pub fn vert_variant(
+        &self,
+        codepoint: char,
+        height: Length<Font>,
+    ) -> Result<VariantGlyph, FontError> {
         use font::Font;
-        let GlyphId(gid) = self.font.gid_for_codepoint(codepoint as u32).ok_or(FontError::MissingGlyphCodepoint(codepoint))?;
-        Ok(self.math.variants.vert_variant(gid as u16, (height / Font) as u32))
+        let GlyphId(gid) = self
+            .font
+            .gid_for_codepoint(codepoint as u32)
+            .ok_or(FontError::MissingGlyphCodepoint(codepoint))?;
+        Ok(self
+            .math
+            .variants
+            .vert_variant(gid as u16, (height / Font) as u32))
     }
-    pub fn horz_variant(&self, codepoint: char, width: Length<Font>) -> Result<VariantGlyph, FontError> {
+    pub fn horz_variant(
+        &self,
+        codepoint: char,
+        width: Length<Font>,
+    ) -> Result<VariantGlyph, FontError> {
         use font::Font;
-        let GlyphId(gid) = self.font.gid_for_codepoint(codepoint as u32).ok_or(FontError::MissingGlyphCodepoint(codepoint))?;
-        Ok(self.math.variants.horz_variant(gid as u16, (width / Font) as u32))
+        let GlyphId(gid) = self
+            .font
+            .gid_for_codepoint(codepoint as u32)
+            .ok_or(FontError::MissingGlyphCodepoint(codepoint))?;
+        Ok(self
+            .math
+            .variants
+            .horz_variant(gid as u16, (width / Font) as u32))
     }
 }
 
@@ -142,7 +180,7 @@ impl Constants {
             subscript_shift_down: em(math.subscript_top_max.value.into()),
             subscript_top_max: em(math.subscript_top_max.value.into()),
             subscript_baseline_drop_min: em(math.subscript_baseline_drop_min.value.into()),
-            
+
             superscript_baseline_drop_max: em(math.superscript_baseline_drop_max.value.into()),
             superscript_bottom_min: em(math.superscript_bottom_min.value.into()),
             superscript_shift_up_cramped: em(math.superscript_shift_up_cramped.value.into()),
@@ -155,10 +193,22 @@ impl Constants {
             lower_limit_baseline_drop_min: em(math.lower_limit_baseline_drop_min.value.into()),
 
             fraction_rule_thickness: em(math.fraction_rule_thickness.value.into()),
-            fraction_numerator_display_style_shift_up: em(math.fraction_numerator_display_style_shift_up.value.into()),
-            fraction_denominator_display_style_shift_down: em(math.fraction_denominator_display_style_shift_down.value.into()),
-            fraction_num_display_style_gap_min: em(math.fraction_num_display_style_gap_min.value.into()),
-            fraction_denom_display_style_gap_min: em(math.fraction_denom_display_style_gap_min.value.into()),
+            fraction_numerator_display_style_shift_up: em(math
+                .fraction_numerator_display_style_shift_up
+                .value
+                .into()),
+            fraction_denominator_display_style_shift_down: em(math
+                .fraction_denominator_display_style_shift_down
+                .value
+                .into()),
+            fraction_num_display_style_gap_min: em(math
+                .fraction_num_display_style_gap_min
+                .value
+                .into()),
+            fraction_denom_display_style_gap_min: em(math
+                .fraction_denom_display_style_gap_min
+                .value
+                .into()),
             fraction_numerator_shift_up: em(math.fraction_numerator_shift_up.value.into()),
             fraction_denominator_shift_down: em(math.fraction_denominator_shift_down.value.into()),
             fraction_numerator_gap_min: em(math.fraction_numerator_gap_min.value.into()),
@@ -171,13 +221,19 @@ impl Constants {
 
             display_operator_min_height: em(math.display_operator_min_height.into()),
 
-            radical_display_style_vertical_gap: em(math.radical_display_style_vertical_gap.value.into()),
+            radical_display_style_vertical_gap: em(math
+                .radical_display_style_vertical_gap
+                .value
+                .into()),
             radical_vertical_gap: em(math.radical_vertical_gap.value.into()),
             radical_rule_thickness: em(math.radical_rule_thickness.value.into()),
             radical_extra_ascender: em(math.radical_extra_ascender.value.into()),
 
             stack_display_style_gap_min: em(math.stack_display_style_gap_min.value.into()),
-            stack_top_display_style_shift_up: em(math.stack_top_display_style_shift_up.value.into()),
+            stack_top_display_style_shift_up: em(math
+                .stack_top_display_style_shift_up
+                .value
+                .into()),
             stack_top_shift_up: em(math.stack_top_shift_up.value.into()),
             stack_bottom_shift_down: em(math.stack_bottom_shift_down.value.into()),
             stack_gap_min: em(math.stack_gap_min.value.into()),
@@ -216,7 +272,6 @@ pub struct Style {
     pub family: Family,
     pub weight: Weight,
 }
-
 
 impl Style {
     pub fn new() -> Style {

@@ -77,11 +77,11 @@ static DIGIT_LUT: [u32; 28] = [
 pub fn style_symbol(codepoint: char, style: Style) -> char {
     let codepoint = codepoint as u32;
     let cp = match codepoint {
-        LOWER_A ..= LOWER_Z => style_lookup(&LATIN_LOWER_LUT, codepoint, style),
-        UPPER_A ..= UPPER_Z => style_lookup(&LATIN_UPPER_LUT, codepoint, style),
-        UPPER_ALPHA ..= UPPER_OMEGA => style_lookup(&GREEK_UPPER_LUT, codepoint, style),
-        LOWER_ALPHA ..= LOWER_OMEGA => style_lookup(&GREEK_LOWER_LUT, codepoint, style),
-        DIGIT_0 ..= DIGIT_9 => style_lookup(&DIGIT_LUT, codepoint, style),
+        LOWER_A..=LOWER_Z => style_lookup(&LATIN_LOWER_LUT, codepoint, style),
+        UPPER_A..=UPPER_Z => style_lookup(&LATIN_UPPER_LUT, codepoint, style),
+        UPPER_ALPHA..=UPPER_OMEGA => style_lookup(&GREEK_UPPER_LUT, codepoint, style),
+        LOWER_ALPHA..=LOWER_OMEGA => style_lookup(&GREEK_LOWER_LUT, codepoint, style),
+        DIGIT_0..=DIGIT_9 => style_lookup(&DIGIT_LUT, codepoint, style),
         _ => style_other(codepoint, style),
     };
     std::char::from_u32(cp).unwrap()

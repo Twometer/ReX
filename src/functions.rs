@@ -1,14 +1,14 @@
 use crate::dimensions::Unit;
-use crate::font::{Weight, Family, AtomType, Style, style_symbol};
+use crate::error::{ParseError, ParseResult};
+use crate::font::{style_symbol, AtomType, Family, Style, Weight};
 use crate::layout::Style as LayoutStyle;
 use crate::lexer::{Lexer, Token};
 use crate::parser as parse;
-use crate::parser::nodes::{ParseNode, Radical, MathStyle, GenFraction, Rule, BarThickness, AtomChange,
-                    Color, Stack};
 use crate::parser::color::RGBA;
-use crate::error::{ParseError, ParseResult};
+use crate::parser::nodes::{
+    AtomChange, BarThickness, Color, GenFraction, MathStyle, ParseNode, Radical, Rule, Stack,
+};
 use crate::parser::symbols::Symbol;
-
 
 macro_rules! sym {
     (@at ord) => { AtomType::Ordinal };
@@ -62,15 +62,29 @@ impl Command {
     }
 }
 
-
 pub fn get_command(name: &str) -> Option<Command> {
     let command = match name {
-        "frac"   => Command::Fraction(None, None, BarThickness::Default, MathStyle::NoChange),
-        "tfrac"  => Command::Fraction(None, None, BarThickness::Default, MathStyle::Text),
-        "dfrac"  => Command::Fraction(None, None, BarThickness::Default, MathStyle::Display),
-        "binom"  => Command::Fraction(sym!('(', open), sym!(')', close), BarThickness::None, MathStyle::NoChange),
-        "tbinom" => Command::Fraction(sym!('(', open), sym!(')', close), BarThickness::None, MathStyle::Text),
-        "dbinom" => Command::Fraction(sym!('(', open), sym!(')', close), BarThickness::None, MathStyle::Display),
+        "frac" => Command::Fraction(None, None, BarThickness::Default, MathStyle::NoChange),
+        "tfrac" => Command::Fraction(None, None, BarThickness::Default, MathStyle::Text),
+        "dfrac" => Command::Fraction(None, None, BarThickness::Default, MathStyle::Display),
+        "binom" => Command::Fraction(
+            sym!('(', open),
+            sym!(')', close),
+            BarThickness::None,
+            MathStyle::NoChange,
+        ),
+        "tbinom" => Command::Fraction(
+            sym!('(', open),
+            sym!(')', close),
+            BarThickness::None,
+            MathStyle::Text,
+        ),
+        "dbinom" => Command::Fraction(
+            sym!('(', open),
+            sym!(')', close),
+            BarThickness::None,
+            MathStyle::Display,
+        ),
 
         // Stacking commands
         "substack" => Command::SubStack(AtomType::Inner),
@@ -79,91 +93,91 @@ pub fn get_command(name: &str) -> Option<Command> {
         "sqrt" => Command::Radical,
 
         // Delimiter size commands
-        "bigl"  => Command::DelimiterSize(1, AtomType::Open),
-        "Bigl"  => Command::DelimiterSize(2, AtomType::Open),
+        "bigl" => Command::DelimiterSize(1, AtomType::Open),
+        "Bigl" => Command::DelimiterSize(2, AtomType::Open),
         "biggl" => Command::DelimiterSize(3, AtomType::Open),
         "Biggl" => Command::DelimiterSize(4, AtomType::Open),
-        "bigr"  => Command::DelimiterSize(1, AtomType::Close),
-        "Bigr"  => Command::DelimiterSize(2, AtomType::Close),
+        "bigr" => Command::DelimiterSize(1, AtomType::Close),
+        "Bigr" => Command::DelimiterSize(2, AtomType::Close),
         "biggr" => Command::DelimiterSize(3, AtomType::Close),
         "Biggr" => Command::DelimiterSize(4, AtomType::Close),
-        "bigm"  => Command::DelimiterSize(1, AtomType::Relation),
-        "Bigm"  => Command::DelimiterSize(2, AtomType::Relation),
+        "bigm" => Command::DelimiterSize(1, AtomType::Relation),
+        "Bigm" => Command::DelimiterSize(2, AtomType::Relation),
         "biggm" => Command::DelimiterSize(3, AtomType::Relation),
         "Biggm" => Command::DelimiterSize(4, AtomType::Relation),
-        "big"   => Command::DelimiterSize(1, AtomType::Ordinal),
-        "Big"   => Command::DelimiterSize(2, AtomType::Ordinal),
-        "bigg"  => Command::DelimiterSize(3, AtomType::Ordinal),
-        "Bigg"  => Command::DelimiterSize(4, AtomType::Ordinal),
+        "big" => Command::DelimiterSize(1, AtomType::Ordinal),
+        "Big" => Command::DelimiterSize(2, AtomType::Ordinal),
+        "bigg" => Command::DelimiterSize(3, AtomType::Ordinal),
+        "Bigg" => Command::DelimiterSize(4, AtomType::Ordinal),
 
         // Spacing related commands
-        "!"     => Command::Kerning(Unit::Em(-3f64/18f64)),
-        ","     => Command::Kerning(Unit::Em(3f64/18f64)),
-        ":"     => Command::Kerning(Unit::Em(4f64/18f64)),
-        ";"     => Command::Kerning(Unit::Em(5f64/18f64)),
-        " "     => Command::Kerning(Unit::Em(1f64/4f64)),
-        "quad"  => Command::Kerning(Unit::Em(1.0f64)),
+        "!" => Command::Kerning(Unit::Em(-3f64 / 18f64)),
+        "," => Command::Kerning(Unit::Em(3f64 / 18f64)),
+        ":" => Command::Kerning(Unit::Em(4f64 / 18f64)),
+        ";" => Command::Kerning(Unit::Em(5f64 / 18f64)),
+        " " => Command::Kerning(Unit::Em(1f64 / 4f64)),
+        "quad" => Command::Kerning(Unit::Em(1.0f64)),
         "qquad" => Command::Kerning(Unit::Em(2.0f64)),
-        "rule"  => Command::Rule,
+        "rule" => Command::Rule,
 
         // Useful other than debugging?
         "vextend" => Command::VExtend,
 
         // Display style changes
-        "textstyle"         => Command::Style(LayoutStyle::Text),
-        "displaystyle"      => Command::Style(LayoutStyle::Display),
-        "scriptstyle"       => Command::Style(LayoutStyle::Script),
+        "textstyle" => Command::Style(LayoutStyle::Text),
+        "displaystyle" => Command::Style(LayoutStyle::Display),
+        "scriptstyle" => Command::Style(LayoutStyle::Script),
         "scriptscriptstyle" => Command::Style(LayoutStyle::ScriptScript),
 
         // Atom-type changes
-        "mathop"  => Command::AtomChange(AtomType::Operator(false)),
+        "mathop" => Command::AtomChange(AtomType::Operator(false)),
         "mathrel" => Command::AtomChange(AtomType::Relation),
         "mathord" => Command::AtomChange(AtomType::Alpha),
 
         // Color related
-        "color"   => Command::Color,
-        "blue"    => Command::ColorLit(RGBA(0,0,0xff,0xff)),
-        "red"     => Command::ColorLit(RGBA(0xff,0,0,0xff)),
-        "gray"    => Command::ColorLit(RGBA(0x80,0x80,0x80,0xff)),
-        "phantom" => Command::ColorLit(RGBA(0,0,0,0)),
+        "color" => Command::Color,
+        "blue" => Command::ColorLit(RGBA(0, 0, 0xff, 0xff)),
+        "red" => Command::ColorLit(RGBA(0xff, 0, 0, 0xff)),
+        "gray" => Command::ColorLit(RGBA(0x80, 0x80, 0x80, 0xff)),
+        "phantom" => Command::ColorLit(RGBA(0, 0, 0, 0)),
 
         // Operators with limits
-        "det"     => Command::TextOperator("det", true),
-        "gcd"     => Command::TextOperator("gcd", true),
-        "lim"     => Command::TextOperator("lim", true),
-        "limsup"  => Command::TextOperator("lim,sup", true),
-        "liminf"  => Command::TextOperator("lim,inf", true),
-        "sup"     => Command::TextOperator("sup", true),
-        "supp"    => Command::TextOperator("supp", true),
-        "inf"     => Command::TextOperator("inf", true),
-        "max"     => Command::TextOperator("max", true),
-        "min"     => Command::TextOperator("min", true),
-        "Pr"      => Command::TextOperator("Pr", true),
+        "det" => Command::TextOperator("det", true),
+        "gcd" => Command::TextOperator("gcd", true),
+        "lim" => Command::TextOperator("lim", true),
+        "limsup" => Command::TextOperator("lim,sup", true),
+        "liminf" => Command::TextOperator("lim,inf", true),
+        "sup" => Command::TextOperator("sup", true),
+        "supp" => Command::TextOperator("supp", true),
+        "inf" => Command::TextOperator("inf", true),
+        "max" => Command::TextOperator("max", true),
+        "min" => Command::TextOperator("min", true),
+        "Pr" => Command::TextOperator("Pr", true),
 
         // Operators without limits
-        "sin"     => Command::TextOperator("sin", false),
-        "cos"     => Command::TextOperator("cos", false),
-        "tan"     => Command::TextOperator("tan", false),
-        "cot"     => Command::TextOperator("cot", false),
-        "csc"     => Command::TextOperator("csc", false),
-        "sec"     => Command::TextOperator("sec", false),
-        "arcsin"  => Command::TextOperator("arcsin", false),
-        "arccos"  => Command::TextOperator("arccos", false),
-        "arctan"  => Command::TextOperator("arctan", false),
-        "sinh"    => Command::TextOperator("sinh", false),
-        "cosh"    => Command::TextOperator("cosh", false),
-        "tanh"    => Command::TextOperator("tanh", false),
-        "arg"     => Command::TextOperator("arg", false),
-        "deg"     => Command::TextOperator("deg", false),
-        "dim"     => Command::TextOperator("dim", false),
-        "exp"     => Command::TextOperator("exp", false),
-        "hom"     => Command::TextOperator("hom", false),
-        "Hom"     => Command::TextOperator("Hom", false),
-        "ker"     => Command::TextOperator("ker", false),
-        "Ker"     => Command::TextOperator("Ker", false),
-        "ln"      => Command::TextOperator("ln", false),
-        "log"     => Command::TextOperator("log", false),
-        _ => return None
+        "sin" => Command::TextOperator("sin", false),
+        "cos" => Command::TextOperator("cos", false),
+        "tan" => Command::TextOperator("tan", false),
+        "cot" => Command::TextOperator("cot", false),
+        "csc" => Command::TextOperator("csc", false),
+        "sec" => Command::TextOperator("sec", false),
+        "arcsin" => Command::TextOperator("arcsin", false),
+        "arccos" => Command::TextOperator("arccos", false),
+        "arctan" => Command::TextOperator("arctan", false),
+        "sinh" => Command::TextOperator("sinh", false),
+        "cosh" => Command::TextOperator("cosh", false),
+        "tanh" => Command::TextOperator("tanh", false),
+        "arg" => Command::TextOperator("arg", false),
+        "deg" => Command::TextOperator("deg", false),
+        "dim" => Command::TextOperator("dim", false),
+        "exp" => Command::TextOperator("exp", false),
+        "hom" => Command::TextOperator("hom", false),
+        "Hom" => Command::TextOperator("Hom", false),
+        "ker" => Command::TextOperator("ker", false),
+        "Ker" => Command::TextOperator("Ker", false),
+        "ln" => Command::TextOperator("ln", false),
+        "log" => Command::TextOperator("log", false),
+        _ => return None,
     };
     Some(command)
 }
@@ -175,10 +189,12 @@ fn radical<'a>(lex: &mut Lexer<'a>, local: Style) -> ParseResult<'a, ParseNode> 
 
 fn rule<'a>(lex: &mut Lexer<'a>, _: Style) -> ParseResult<'a, ParseNode> {
     lex.consume_whitespace();
-    let width = lex.dimension()?
+    let width = lex
+        .dimension()?
         .expect("Unable to parse dimension for Rule.");
     lex.consume_whitespace();
-    let height = lex.dimension()?
+    let height = lex
+        .dimension()?
         .expect("Unable to parse dimension for Rule.");
     Ok(ParseNode::Rule(Rule { width, height }))
 }
@@ -207,27 +223,33 @@ fn color_lit<'a>(lex: &mut Lexer<'a>, local: Style, color: RGBA) -> ParseResult<
     Ok(ParseNode::Color(Color { color, inner }))
 }
 
-fn fraction<'a>(lex: &mut Lexer<'a>,
-            local: Style,
-            left_delimiter: Option<Symbol>,
-            right_delimiter: Option<Symbol>,
-            bar_thickness: BarThickness,
-            style: MathStyle)
-            -> ParseResult<'a, ParseNode> {
+fn fraction<'a>(
+    lex: &mut Lexer<'a>,
+    local: Style,
+    left_delimiter: Option<Symbol>,
+    right_delimiter: Option<Symbol>,
+    bar_thickness: BarThickness,
+    style: MathStyle,
+) -> ParseResult<'a, ParseNode> {
     let numerator = parse::required_argument(lex, local)?;
     let denominator = parse::required_argument(lex, local)?;
 
     Ok(ParseNode::GenFraction(GenFraction {
-                                  left_delimiter,
-                                  right_delimiter,
-                                  bar_thickness,
-                                  numerator,
-                                  denominator,
-                                  style,
-                              }))
+        left_delimiter,
+        right_delimiter,
+        bar_thickness,
+        numerator,
+        denominator,
+        style,
+    }))
 }
 
-fn delimiter_size<'a>(lex: &mut Lexer<'a>, local: Style, _: u8, atom_type: AtomType) -> ParseResult<'a, ParseNode> {
+fn delimiter_size<'a>(
+    lex: &mut Lexer<'a>,
+    local: Style,
+    _: u8,
+    atom_type: AtomType,
+) -> ParseResult<'a, ParseNode> {
     let symbol = parse::expect_type(lex, local, atom_type)?;
     Ok(ParseNode::Symbol(symbol))
 }
@@ -245,7 +267,12 @@ fn atom_change<'a>(lex: &mut Lexer<'a>, local: Style, at: AtomType) -> ParseResu
     Ok(ParseNode::AtomChange(AtomChange { at, inner }))
 }
 
-fn text_operator<'a>(_: &mut Lexer<'a>, _: Style, text: &str, limits: bool) -> ParseResult<'a, ParseNode> {
+fn text_operator<'a>(
+    _: &mut Lexer<'a>,
+    _: Style,
+    text: &str,
+    limits: bool,
+) -> ParseResult<'a, ParseNode> {
     const SMALL_SKIP: Unit = Unit::Em(3f64 / 18f64);
     let at = AtomType::Operator(limits);
     let mut inner = Vec::with_capacity(text.len());
@@ -255,20 +282,25 @@ fn text_operator<'a>(_: &mut Lexer<'a>, _: Style, text: &str, limits: bool) -> P
             inner.push(ParseNode::Kerning(SMALL_SKIP));
         } else {
             inner.push(ParseNode::Symbol(Symbol {
-                                             codepoint:
-                                                 style_symbol(c,
-                                                              Style::default()
-                                                                  .with_family(Family::Roman)
-                                                                  .with_weight(Weight::None)),
-                                             atom_type: AtomType::Ordinal,
-                                         }));
+                codepoint: style_symbol(
+                    c,
+                    Style::default()
+                        .with_family(Family::Roman)
+                        .with_weight(Weight::None),
+                ),
+                atom_type: AtomType::Ordinal,
+            }));
         }
     }
 
     Ok(ParseNode::AtomChange(AtomChange { at, inner }))
 }
 
-fn substack<'a>(lex: &mut Lexer<'a>, local: Style, atom_type: AtomType) -> ParseResult<'a, ParseNode> {
+fn substack<'a>(
+    lex: &mut Lexer<'a>,
+    local: Style,
+    atom_type: AtomType,
+) -> ParseResult<'a, ParseNode> {
     if lex.current != Token::Symbol('{') {
         return Err(ParseError::StackMustFollowGroup);
     }

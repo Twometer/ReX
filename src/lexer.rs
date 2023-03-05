@@ -1,7 +1,9 @@
-use std::fmt;
+use log::debug;
+
 use crate::dimensions::Unit;
-use crate::parser::color::RGBA;
 use crate::error::{ParseError, ParseResult};
+use crate::parser::color::RGBA;
+use std::fmt;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Token<'a> {
@@ -224,7 +226,6 @@ impl<'a> Lexer<'a> {
     }
 }
 
-
 impl<'a> fmt::Display for Token<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -244,7 +245,7 @@ mod tests {
     fn lex_tokens() {
         macro_rules! assert_eq_token_stream {
             ($left:expr, $right:expr) => {{
-                let mut left  = Lexer::new($left);
+                let mut left = Lexer::new($left);
                 let mut right = Lexer::new($right);
 
                 loop {
@@ -253,10 +254,10 @@ mod tests {
 
                     assert_eq!(l_tok, r_tok);
                     if l_tok == Token::EOF {
-                        break
+                        break;
                     }
                 }
-            }}
+            }};
         }
 
         assert_eq_token_stream!(r"\cs1", r"\cs 1");
@@ -274,7 +275,7 @@ mod tests {
                 let mut l = Lexer::new($input);
                 assert_eq!(l.group(), $result);
                 assert!(!(l.current == Token::Symbol('}')));
-            }
+            };
         }
 
         assert_group!("{1}", Ok("1"));
@@ -291,7 +292,7 @@ mod tests {
             ($input:expr, $result:expr) => {
                 let mut lex = Lexer::new($input);
                 assert_eq!(lex.alphanumeric(), $result);
-            }
+            };
         }
 
         // Ends on EOF

@@ -1,7 +1,11 @@
+use log::debug;
+
+use crate::error::{ParseError, ParseResult};
+use crate::font::{AtomType, Style};
 use crate::lexer::{Lexer, Token};
-use crate::font::{Style, AtomType};
-use crate::parser::{self, optional_argument_with, required_argument_with, ParseNode, symbols::Symbol};
-use crate::error::{ParseResult, ParseError};
+use crate::parser::{
+    self, optional_argument_with, required_argument_with, symbols::Symbol, ParseNode,
+};
 
 /// An enumeration of recognized enviornmnets.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -125,46 +129,43 @@ pub struct Array {
     pub right_delimiter: Option<Symbol>,
 }
 
-
 fn matrix<'a>(lex: &mut Lexer<'a>, style: Style) -> ParseResult<'a, ParseNode> {
     matrix_common(lex, style, None, None)
 }
 
-fn matrix_with<'a>(lex: &mut Lexer<'a>,
-               style: Style,
-               left_delimiter: char,
-               right_delimiter: char)
-               -> ParseResult<'a, ParseNode> {
+fn matrix_with<'a>(
+    lex: &mut Lexer<'a>,
+    style: Style,
+    left_delimiter: char,
+    right_delimiter: char,
+) -> ParseResult<'a, ParseNode> {
     matrix_common(lex, style, Some(left_delimiter), Some(right_delimiter))
 }
 
-fn matrix_common<'a>(lex: &mut Lexer<'a>,
-                 style: Style,
-                 left_delimiter: Option<char>,
-                 right_delimiter: Option<char>)
-                 -> ParseResult<'a, ParseNode> {
+fn matrix_common<'a>(
+    lex: &mut Lexer<'a>,
+    style: Style,
+    left_delimiter: Option<char>,
+    right_delimiter: Option<char>,
+) -> ParseResult<'a, ParseNode> {
     // matrix bodies are paresed like arrays.
     let body = array_body(lex, style)?;
-    let left_delimiter = left_delimiter.map(|code| {
-                                                Symbol {
-                                                    codepoint: code,
-                                                    atom_type: AtomType::Inner,
-                                                }
-                                            });
+    let left_delimiter = left_delimiter.map(|code| Symbol {
+        codepoint: code,
+        atom_type: AtomType::Inner,
+    });
 
-    let right_delimiter = right_delimiter.map(|code| {
-                                                  Symbol {
-                                                      codepoint: code,
-                                                      atom_type: AtomType::Inner,
-                                                  }
-                                              });
+    let right_delimiter = right_delimiter.map(|code| Symbol {
+        codepoint: code,
+        atom_type: AtomType::Inner,
+    });
 
     Ok(ParseNode::Array(Array {
-                            col_format: ArrayColumnsFormatting::default(),
-                            rows: body,
-                            left_delimiter,
-                            right_delimiter,
-                        }))
+        col_format: ArrayColumnsFormatting::default(),
+        rows: body,
+        left_delimiter,
+        right_delimiter,
+    }))
 }
 
 /// Parse the column alignments for arrays.  The currently supported formats are:
@@ -204,9 +205,9 @@ fn array_col<'a>(lex: &mut Lexer<'a>, _: Style) -> ParseResult<'a, ArrayColumnsF
     }
 
     Ok(ArrayColumnsFormatting {
-           columns: cols,
-           right_vert: current.left_vert,
-       })
+        columns: cols,
+        right_vert: current.left_vert,
+    })
 }
 
 /// Parse the optional argument in an array enviornment.  This dictates the
@@ -253,8 +254,7 @@ fn array_body<'a>(lex: &mut Lexer<'a>, style: Style) -> ParseResult<'a, Vec<Vec<
         current.push(expr);
         match lex.current {
             Token::Symbol('&') => { /* no-op, carry on */ }
-            Token::Command(r"\") |
-            Token::Command(r"cr") => {
+            Token::Command(r"\") | Token::Command(r"cr") => {
                 // TODO: Handle space arguments here.
                 rows.push(current);
                 current = Vec::new();
@@ -276,9 +276,9 @@ fn array<'a>(lex: &mut Lexer<'a>, local: Style) -> ParseResult<'a, ParseNode> {
     debug!("Array, pos: {:?}, cols: {:?}", pos, cols);
     debug!("Contents: {:#?}", contents);
     Ok(ParseNode::Array(Array {
-                            col_format: cols,
-                            rows: contents,
-                            left_delimiter: None,
-                            right_delimiter: None,
-                        }))
+        col_format: cols,
+        rows: contents,
+        left_delimiter: None,
+        right_delimiter: None,
+    }))
 }

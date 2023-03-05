@@ -3,7 +3,7 @@ extern crate rex;
 extern crate serde_derive;
 extern crate serde_yaml;
 
-use rex::{SVGRenderer, RenderSettings, Renderer};
+use rex::{RenderSettings, Renderer, SVGRenderer};
 use std::fs::File;
 use std::io::BufReader;
 //use std::io::Sink;
@@ -12,9 +12,9 @@ type SvgSink<'a> = SVGRenderer<'a, Vec<u8>>;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Tests {
-    #[serde(rename="Pass")]
+    #[serde(rename = "Pass")]
     pass: Vec<String>,
-    #[serde(rename="Fail")]
+    #[serde(rename = "Fail")]
     fail: Vec<String>,
 }
 
