@@ -71,7 +71,7 @@ fn main() {
     let mut layout = Layout::new();
     layout.add_node(grid.build());
 
-    let mut renderer = Renderer::new();
+    let renderer = Renderer::new();
     let (x0, y0, x1, y1) = renderer.size(&layout);
     let mut scene = Scene::new();
     scene.set_view_box(RectF::from_points(

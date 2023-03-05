@@ -8,7 +8,7 @@ impl RGBA {
         self.3 != 0xff
     }
     pub fn from_name(name: &str) -> Option<RGBA> {
-        match COLOR_MAP.binary_search_by_key(&name, |&(name, color)| name) {
+        match COLOR_MAP.binary_search_by_key(&name, |&(name, _color)| name) {
             Ok(idx) => Some(COLOR_MAP[idx].1),
             _ => None,
         }

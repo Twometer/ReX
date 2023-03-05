@@ -48,7 +48,7 @@ impl Cursor {
 }
 
 pub trait Backend {
-    fn bbox(&mut self, _pos: Cursor, _width: f64, _height: f64, role: Role) {}
+    fn bbox(&mut self, _pos: Cursor, _width: f64, _height: f64, _role: Role) {}
     fn symbol(&mut self, pos: Cursor, gid: u16, scale: f64, ctx: &MathFont);
     fn rule(&mut self, pos: Cursor, width: f64, height: f64);
     fn begin_color(&mut self, color: RGBA);
@@ -101,15 +101,15 @@ impl Renderer {
         &self,
         out: &mut impl Backend,
         pos: Cursor,
-        width: f64,
-        height: f64,
+        _width: f64,
+        _height: f64,
         grid: &Grid,
     ) {
         let x_offsets = grid.x_offsets();
         let y_offsets = grid.y_offsets();
         for (&(row, column), node) in grid.contents.iter() {
-            let width = grid.columns[column];
-            let (height, depth) = grid.rows[row];
+            //let width = grid.columns[column];
+            let (height, _depth) = grid.rows[row];
 
             self.render_node(
                 out,

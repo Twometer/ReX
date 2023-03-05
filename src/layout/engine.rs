@@ -87,7 +87,9 @@ fn layout_recurse<'a, 'f: 'a>(
 
 fn layout_node<'a, 'f: 'a>(node: &ParseNode, config: LayoutSettings<'a, 'f>) -> Layout<'f> {
     let mut layout = Layout::new();
-    layout.dispatch(config, node, AtomType::Transparent);
+    layout
+        .dispatch(config, node, AtomType::Transparent)
+        .expect("Failed to layout node");
     layout.finalize()
 }
 
@@ -306,7 +308,8 @@ impl<'f> Layout<'f> {
         // This is where he handle Operators with limits.
         if let Some(ref b) = scripts.base {
             if AtomType::Operator(true) == b.atom_type() {
-                self.operator_limits(base, sup, sub, config);
+                self.operator_limits(base, sup, sub, config)
+                    .expect("Failed to handle operators with limits");
                 return Ok(());
             }
         }

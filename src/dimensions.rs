@@ -19,7 +19,7 @@ impl<U> Length<U> {
     pub fn is_zero(&self) -> bool {
         self.value == 0.0
     }
-    pub fn new(value: impl Into<f64>, unit: U) -> Self {
+    pub fn new(value: impl Into<f64>, _unit: U) -> Self {
         Length {
             value: value.into(),
             _m: PhantomData,
@@ -38,7 +38,7 @@ impl<U> Copy for Length<U> {}
 
 impl<U> Div<U> for Length<U> {
     type Output = f64;
-    fn div(self, rhs: U) -> f64 {
+    fn div(self, _rhs: U) -> f64 {
         self.value
     }
 }

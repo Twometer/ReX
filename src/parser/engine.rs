@@ -416,12 +416,12 @@ pub fn environment_name<'a>(lex: &mut Lexer<'a>, _: Style) -> ParseResult<'a, En
 pub fn parse(input: &str) -> ParseResult<Vec<ParseNode>> {
     let mut lexer = Lexer::new(input);
     let local = Style::new();
-    let ParseResult = expression(&mut lexer, local)?;
+    let parse_result = expression(&mut lexer, local)?;
     if lexer.current != Token::EOF {
         return Err(ParseError::UnexpectedEof(lexer.current.into()));
     }
 
-    Ok(ParseResult)
+    Ok(parse_result)
 }
 
 /// Helper function for determining an atomtype based on a given codepoint.
