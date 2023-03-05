@@ -21,6 +21,7 @@ unicode-math = { git = "https://github.com/s3bk/unicode-math/" }
 serde_derive = "1.0"
 serde = "1.0"
 log = "0.4"
+phf = { version = "0.11", features = ["macros"] }
 
 [dev-dependencies]
 serde_yaml = "0.7"

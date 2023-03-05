@@ -1,3 +1,4 @@
+use phf::phf_map;
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -8,20 +9,11 @@ impl RGBA {
         self.3 != 0xff
     }
     pub fn from_name(name: &str) -> Option<RGBA> {
-        match COLOR_MAP.binary_search_by_key(&name, |&(name, _color)| name) {
-            Ok(idx) => Some(COLOR_MAP[idx].1),
-            _ => None,
-        }
+        COLOR_MAP.get(name).cloned()
     }
 }
 
-macro_rules! map {
-    ($($key:expr => $val:expr,)*) => {
-        &[$(($key, $val)),*]
-    };
-}
-
-static COLOR_MAP: &[(&'static str, RGBA)] = map! {
+static COLOR_MAP: phf::Map<&'static str, RGBA> = phf_map! {
     "black" => RGBA(0x00,0x00,0x00,0xff),
     "silver" => RGBA(0xc0,0xc0,0xc0,0xff),
     "gray" => RGBA(0x80,0x80,0x80,0xff),
